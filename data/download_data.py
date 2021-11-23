@@ -1,5 +1,9 @@
 import argparse
 import os
+
+import pandas as pd
+import scipy.io
+
 import torchvision
 
 def download_mnist(save_location):
@@ -63,15 +67,70 @@ def download_cars(save_location):
 
     os.system(f'curl http://ai.stanford.edu/\~jkrause/car196/cars_train.tgz --output {save_location}/cars_train.tgz')
     os.system(f'curl http://ai.stanford.edu/~jkrause/car196/cars_test.tgz --output {save_location}/cars_test.tgz')
+    os.system(f'curl http://ai.stanford.edu/~jkrause/cars/car_devkit.tgz --output {save_location}/car_devkit.tgz')
+    os.system(f'curl http://ai.stanford.edu/\~jkrause/car196/cars_test_annos_withlabels.mat --output {save_location}/cars_test_annos_withlabels.mat')
+
     os.system(f'cd {save_location} && tar -xvf cars_train.tgz && rm cars_train.tgz')
     os.system(f'cd {save_location} && tar -xvf cars_test.tgz && rm cars_test.tgz')
+    os.system(f'cd {save_location} && tar -xvf car_devkit.tgz && rm car_devkit.tgz')
+
+    train_meta = scipy.io.loadmat(f'{save_location}/devkit/cars_train_annos.mat')
+    test_meta = scipy.io.loadmat(f'{save_location}/devkit/cars_test_annos.mat')
+    meta = scipy.io.loadmat(f'{save_location}/devkit/cars_meta.mat')
+
+    jpgs = []
+    labels = []
+    split = []
+    min_x = []
+    max_x = []
+    min_y = []
+    max_y = []
+
+    for met in train_meta['annotations'][0]:
+        jpgs.append(f'cars_train/{str(met[-1][0])}')
+        labels.append(int(met[-2][0]))
+        min_x.append(int(met[0][0]))
+        max_x.append(int(met[1][0]))
+        min_y.append(int(met[2][0]))
+        max_y.append(int(met[3][0]))
+        split.append('train')
+
+        
+    for met in test_meta['annotations'][0]:
+        jpgs.append(f'cars_test/{str(met[-1][0])}')
+        labels.append(int(met[-2][0]))
+        min_x.append(int(met[0][0]))
+        max_x.append(int(met[1][0]))
+        min_y.append(int(met[2][0]))
+        max_y.append(int(met[3][0]))
+        split.append('test')
+        
+        
+    df = pd.DataFrame({
+        'image':jpgs,
+        'label':labels,
+        'min_x': min_x,
+        'min_y': min_y,
+        'max_x': max_x,
+        'max_y': max_y,
+        'split':split})
+
+   
+    class_names = meta['class_names'][0]
+    class_names = [str(c[0]) for c in class_names]
+    meta_data = pd.DataFrame({'label':range(0,196), 'class':class_names})
+    df = pd.merge(df, meta_data)
+    df.to_csv(f'{save_location}/meta_data.csv', index=False)
+
+    os.system(f'cd {save_location} && rm devkit -r')
+
 
 def download_cub(save_location):
 
     if not os.path.isdir(save_location):
         os.mkdir(save_location)
 
-    os.system(f'gdown https://drive.google.com/file/d/1hbzc_P1FuxMkcabkgn9ZKinBwW683j45/view  --output {save_location}/CUB_200_2011.tgz')
+    os.system(f'gdown https://drive.google.com/uc?id=1hbzc_P1FuxMkcabkgn9ZKinBwW683j45  --output {save_location}/CUB_200_2011.tgz')
     os.system(f'cd {save_location} && tar -xvf CUB_200_2011.tgz && rm CUB_200_2011.tgz')
 
 
