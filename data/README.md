@@ -9,7 +9,7 @@ When you have downloaded all of the datasets, the folder will have the following
     ├── data
     │   ├── cars 
     │       ├── cars_test
-                ├── 000001.jpg 
+    |          ├── 000001.jpg 
     │       ├── carts_train
     |          ├── 000001.jpg 
     │       ├── meta_data.csv                            
