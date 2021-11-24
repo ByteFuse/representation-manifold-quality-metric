@@ -1,0 +1,4 @@
+name: 'triplet-entropy'
+margin: 0.5
+cel_weight: 1.0
+tel_weight: 1.0

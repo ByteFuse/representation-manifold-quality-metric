@@ -1,0 +1,9 @@
+encoder: "conv"
+embedding_dim: 128
+logits: False
+number_classes: None
+
+# mlp hyperparameters
+hidden_dim: 128
+n_internal_layers: 6
+dropout: 0.3
