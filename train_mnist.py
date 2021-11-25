@@ -121,7 +121,7 @@ class TrainerSingleImageSet(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-    def setup(self):
+    def setup(self, stage=None):
 
         mnist_train, mnist_test = load_mnist_dataset()
 
@@ -152,7 +152,7 @@ class TrainerSingleImageSet(pl.LightningDataModule):
         return torch.utils.data.DataLoader(
             self.val_data,
             batch_size=self.batch_size,
-            suffle=False,
+            shuffle=False,
             drop_last = True,
             pin_memory=True,
             num_workers=self.num_workers
@@ -262,6 +262,7 @@ class ImageEncoder(pl.LightningModule):
             loss = self.loss_func(emb, logits, labels)
         else:
             emb = self(images)
+            loss = self.loss_func(emb, labels)
 
         self.log(f'train/loss', loss, on_epoch=True, on_step=True)
         return loss
@@ -274,6 +275,7 @@ class ImageEncoder(pl.LightningModule):
             loss = self.loss_func(emb, logits, labels)
         else:
             emb = self(images)
+            loss = self.loss_func(emb, labels)
 
         self.log('valid/loss', loss, on_epoch=True, on_step=False)
         self.log('valid_loss', loss, on_epoch=True, on_step=False)
@@ -297,6 +299,7 @@ def main(cfg: DictConfig):
         torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
         torchvision.transforms.RandomCrop((28,28)),
         torchvision.transforms.GaussianBlur(3),
+        torchvision.transforms.RandomRotation(15),
         torchvision.transforms.Normalize((0.1307,), (0.3081,))
     ])
 
@@ -361,7 +364,7 @@ def main(cfg: DictConfig):
         )
     else:
         data = TrainerSingleImageSet(
-            transform1=transform, 
+            transform=transform, 
             batch_size=cfg.data.batch_size, 
             num_workers=cfg.data.num_workers
         )

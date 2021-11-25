@@ -77,7 +77,7 @@ class ClipLoss(nn.Module):
         labels.cpu()
 
         return loss
-        
+
 
 class TripletEntropyLoss(nn.Module):
 
@@ -97,7 +97,7 @@ class TripletEntropyLoss(nn.Module):
         else:
             self.cross_entropy_loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self, logits, embeddings, labels, categories):
+    def forward(self, logits, embeddings, labels):
 
         # calculate triplet loss
         embeddings = F.normalize(embeddings, p=2, dim=1)
@@ -107,7 +107,7 @@ class TripletEntropyLoss(nn.Module):
 
 
         #calculate cross entropy loss
-        cross_entropy_loss = self.cross_entropy_loss_fn(logits, categories)
+        cross_entropy_loss = self.cross_entropy_loss_fn(logits, labels)
         loss = self.cel_weight * cross_entropy_loss + self.te_weight * triplet_loss
         return loss
 
