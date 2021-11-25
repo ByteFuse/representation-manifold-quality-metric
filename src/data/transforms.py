@@ -4,14 +4,103 @@ import random
 import augly.image as imaugs
 import augly.utils as augly_utils
 
-import torch
 import torchvision
 
-class ImglistToTensor(torch.nn.Module):
-    def forward(self, img_list):
-        return torch.stack([torchvision.transforms.functional.to_tensor(pic) for pic in img_list])
 
-class ExtremelyHardTransformations:
+class MeduimTransformations:
+
+    def __init__(
+        self,
+        image_size=224,
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+        number_transformations = 5,
+        ):
+        
+        self.mean = mean
+        self.std = std
+        self.numer_transformations = list(range(number_transformations))
+        self.image_size=image_size
+
+    def sample_transformations(self):
+                
+        random.seed()
+
+        possible_transformations = [
+            torchvision.transforms.RandomRotation(45),
+            torchvision.transforms.RandomHorizontalFlip(),
+            torchvision.transforms.RandomVerticalFlip(),
+            torchvision.transforms.RandomPerspective(),
+        ]
+
+        random_amount_of_augmentations = random.choice(self.numer_transformations)
+        return random.sample(possible_transformations, random_amount_of_augmentations)
+
+    def augment_text(self):
+        pass
+
+    def forward(self, image):
+    
+        transform = torchvision.transforms.Compose(self.sample_transformations())
+        second_transform = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((self.image_size,self.image_size)),
+            torchvision.transforms.Normalize(mean=self.mean,std=self.std)
+        ])
+
+
+        return second_transform(transform(image))
+
+    __call__ = forward
+
+
+class EasyTransformations:
+
+    def __init__(
+        self,
+        image_size=224,
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+        number_transformations = 2,
+        ):
+        
+        self.mean = mean
+        self.std = std
+        self.numer_transformations = list(range(number_transformations))
+        self.image_size=image_size
+
+    def sample_transformations(self):
+                
+        random.seed()
+
+        possible_transformations = [
+            torchvision.transforms.RandomRotation(45),
+            torchvision.transforms.RandomHorizontalFlip(),
+            torchvision.transforms.RandomVerticalFlip(),
+            torchvision.transforms.RandomPerspective(),
+        ]
+
+        random_amount_of_augmentations = random.choice(self.numer_transformations)
+        return random.sample(possible_transformations, random_amount_of_augmentations)
+
+    def augment_text(self):
+        pass
+
+    def forward(self, image):
+    
+        transform = torchvision.transforms.Compose(self.sample_transformations())
+        second_transform = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((self.image_size,self.image_size)),
+            torchvision.transforms.Normalize(mean=self.mean,std=self.std)
+        ])
+
+
+        return second_transform(transform(image))
+
+    __call__ = forward
+
+
+
+class HardTransformations:
 
     def __init__(
         self,
@@ -27,8 +116,12 @@ class ExtremelyHardTransformations:
         max_text_words=10,
         image_size=224,
         meme_options=['lol', 'to the moon!', 'what up doc?'],
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
         ):
         
+        self.mean = mean
+        self.std = std
         self.distortion_min = distortion_min
         self.distortion_max = distortion_max
         self.perspective_min = perspective_min
@@ -115,8 +208,8 @@ class ExtremelyHardTransformations:
             )
         ]
 
-        random_amount_of_augmentatios = random.choice(self.numer_transformations)
-        return random.sample(possible_transformations, random_amount_of_augmentatios+4)
+        random_amount_of_augmentations = random.choice(self.numer_transformations)
+        return random.sample(possible_transformations, random_amount_of_augmentations+4)
 
     def augment_text(self):
         pass
@@ -133,14 +226,14 @@ class ExtremelyHardTransformations:
         if random.random()>0.5:
             second_transform = torchvision.transforms.Compose([
                 torchvision.transforms.Resize((self.image_size,self.image_size)),
-                torchvision.transforms.RandomVerticalFlip(0.1),
-                torchvision.transforms.RandomHorizontalFlip(0.1),
-                torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
+                torchvision.transforms.RandomVerticalFlip(0.3),
+                torchvision.transforms.RandomHorizontalFlip(0.3),
+                torchvision.transforms.Normalize(mean=self.mean,std=self.std)
             ])
         else:
             second_transform = torchvision.transforms.Compose([
                 torchvision.transforms.Resize((self.image_size,self.image_size)),
-                torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
+                torchvision.transforms.Normalize(mean=self.mean,std=self.std)
             ])
 
 
