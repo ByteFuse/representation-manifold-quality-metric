@@ -1,0 +1,10 @@
+defaults:
+  - encoder: mnist
+  - data: mnist
+  - optim: adam
+  - loss: ntxent
+
+n_batches_accumalation: 8
+
+secrets:
+  wandb_key: '*'
