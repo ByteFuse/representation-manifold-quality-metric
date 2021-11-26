@@ -25,7 +25,6 @@ class MeduimTransformations:
     def sample_transformations(self):
                 
         random.seed()
-
         possible_transformations = [
             torchvision.transforms.RandomRotation(45),
             torchvision.transforms.RandomHorizontalFlip(),
@@ -47,8 +46,8 @@ class MeduimTransformations:
             torchvision.transforms.Normalize(mean=self.mean,std=self.std)
         ])
 
-
-        return second_transform(transform(image))
+        image = second_transform(transform(image))
+        return image 
 
     __call__ = forward
 

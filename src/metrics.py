@@ -2,11 +2,8 @@ import random
 from tqdm import tqdm
 
 import torch 
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision
 
-from src.data.transforms import ExtremelyHardTransformations
+from src.data.transforms import EasyTransformations, MeduimTransformations, HardTransformations
 
 
 class ImageCentriodMQM():
@@ -14,6 +11,7 @@ class ImageCentriodMQM():
     def __init__(
         self, 
         dataloader, 
+        image_size=224,
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225],
         number_of_runs=10,
@@ -22,38 +20,31 @@ class ImageCentriodMQM():
         assert isinstance(dataloader, torch.utils.data.dataloader.DataLoader), 'dataloader must be of type torch.utils.data.dataloader.DataLoader'
 
         self.augmentation_distributions = {
-            'easy':torchvision.transforms.Compose([
-                    torchvision.transforms.RandAugment(),
-                    torchvision.transforms.ToTensor(),
-                    torchvision.transforms.Normalize(mean = (0.1307,), std =  (0.3081,))
-            ]),
-            'meduim': torchvision.transforms.Compose([
-                    torchvision.transforms.TrivialAugmentWide(),
-                    torchvision.transforms.ToTensor(),
-                    torchvision.transforms.Normalize(mean = (0.1307,), std =  (0.3081,))
-                ]),
-            'hard':ExtremelyHardTransformations(mean=mean, std=std)
+            'easy':EasyTransformations(image_size=image_size, mean=mean, std=std),
+            'meduim': MeduimTransformations(image_size=image_size, mean=mean, std=std),
+            'hard':HardTransformations(image_size=image_size, mean=mean, std=std)
         }
         self.dataloader = dataloader  
         self.number_of_runs = number_of_runs
         self.supervised=supervised
 
-    def calculate_centroid_mqm(self, representations, labels):
-
+    def calculate_mqm(self, representations, labels):
+        print(len(representations))
         if self.supervised:
-            labels = torch.unique(labels, sorted=True, return_inverse=False)
+            unique_labels = torch.unique(torch.tensor(labels), sorted=True, return_inverse=False)
             
             centroid_mqm = 0
 
-            for label in labels:
-                indices = labels == label
+            for label in unique_labels:
+                indices = (torch.tensor(labels) == torch.tensor(label))
                 indices = indices.nonzero()
+                indices = torch.tensor([int(index[0]) for index in indices])
 
                 centriods = torch.mean(representations[indices], dim=1)
                 distance_matrix = torch.cdist(centriods, centriods, p=2)
                 centroid_mqm += torch.mean(distance_matrix)
             
-            centroid_mqm /= len(labels)
+            centroid_mqm /= len(unique_labels)
 
         else:
            centriods = torch.mean(representations, dim=1)
@@ -76,14 +67,12 @@ class ImageCentriodMQM():
                 torch.manual_seed(seed)
                 image = batch
                 
-            image = torchvision.transforms.ConvertImageDtype(torch.uint8)(image*255)  
             image = augmentations(image)
     
             with torch.no_grad():
-                representations.extend(model(image.to(device)).cpu())
+                representations.append(model(image.to(device)).cpu())
 
         representations = torch.cat(representations, dim=0)
-
         if self.supervised:
             return representations, labels
         else:
@@ -112,9 +101,9 @@ class ImageCentriodMQM():
                 augmented_labels.extend(labels)
             else:
                 representations = self.generate_representations(model, augmentation_distributions)
-            augmented_representations.append(representations)
+            augmented_representations.extend(representations)
         
-        centriod_mqm = self.calculate_centroid_mqm(augmented_representations, augmented_labels)
+        centriod_mqm = self.calculate_mqm(augmented_representations, augmented_labels)
 
         if training_state:
             model.train()
@@ -123,3 +112,38 @@ class ImageCentriodMQM():
     
     
     __call__ = forward
+
+
+class ImagePointWiseMQM(ImageCentriodMQM):
+    def __init__(
+        self, 
+        dataloader, 
+        image_size=224,
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+        number_of_runs=10,
+        supervised=False):
+
+        super().__init__(dataloader, image_size, mean, std, number_of_runs, supervised)
+
+    def calculate_mqm(self, representations, labels):
+
+        if self.supervised:
+            labels = torch.unique(labels, sorted=True, return_inverse=False)
+            
+            point_wise_mqm = 0
+
+            for label in labels:
+                indices = labels == label
+                indices = indices.nonzero()
+
+                distance_matrix = torch.cdist(representations, representations, p=2)
+                point_wise_mqm += torch.mean(distance_matrix)
+            
+            point_wise_mqm /= len(labels)
+
+        else:
+            distance_matrix = torch.cdist(representations, representations, p=2)
+            point_wise_mqm = torch.mean(distance_matrix)
+        
+        return point_wise_mqm
