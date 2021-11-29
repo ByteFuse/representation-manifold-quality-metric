@@ -4,6 +4,7 @@ import random
 import augly.image as imaugs
 import augly.utils as augly_utils
 
+import torch
 import torchvision
 
 
@@ -30,6 +31,11 @@ class MeduimTransformations:
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
             torchvision.transforms.RandomPerspective(),
+            torchvision.transforms.GaussianBlur(kernel_size=5),
+            torchvision.transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+            torchvision.transforms.RandomGrayscale(),
+            torchvision.transforms.RandomAffine(degrees=45, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=10),
+            torchvision.transforms.RandomResizedCrop((self.image_size,self.image_size)),
         ]
 
         random_amount_of_augmentations = random.choice(self.numer_transformations)
@@ -38,14 +44,13 @@ class MeduimTransformations:
     def augment_text(self):
         pass
 
-    def forward(self, image):
-    
+    def forward(self, image,seed):
+        torch.manual_seed(seed)
         transform = torchvision.transforms.Compose(self.sample_transformations())
         second_transform = torchvision.transforms.Compose([
             torchvision.transforms.Resize((self.image_size,self.image_size)),
             torchvision.transforms.Normalize(mean=self.mean,std=self.std)
         ])
-
         image = second_transform(transform(image))
         return image 
 
@@ -84,8 +89,8 @@ class EasyTransformations:
     def augment_text(self):
         pass
 
-    def forward(self, image):
-    
+    def forward(self, image, seed):
+        torch.manual_seed(seed)
         transform = torchvision.transforms.Compose(self.sample_transformations())
         second_transform = torchvision.transforms.Compose([
             torchvision.transforms.Resize((self.image_size,self.image_size)),
@@ -96,7 +101,6 @@ class EasyTransformations:
         return second_transform(transform(image))
 
     __call__ = forward
-
 
 
 class HardTransformations:
@@ -213,12 +217,13 @@ class HardTransformations:
     def augment_text(self):
         pass
 
-    def forward(self, image):
+    def forward(self, image, seed):
     
         if random.random()>0.5:
             transforms = [torchvision.transforms.ToPILImage(), imaugs.Resize(width=256, height=256)]
         else:
             transforms = [torchvision.transforms.RandomResizedCrop((256,256)), torchvision.transforms.ToPILImage()]
+        torch.manual_seed(seed)
         transforms.extend(self.sample_transformations())
         first_tranforms = torchvision.transforms.Compose(transforms)
 

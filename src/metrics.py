@@ -1,6 +1,7 @@
 import random
 from tqdm import tqdm
 
+import numpy as np
 import torch 
 
 from src.data.transforms import EasyTransformations, MeduimTransformations, HardTransformations
@@ -15,21 +16,26 @@ class ImageCentriodMQM():
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225],
         number_of_runs=10,
-        supervised=False):
+        supervised=False,
+        number_transformations=5,
+        seed=None,
+        verbose=False):
         
         assert isinstance(dataloader, torch.utils.data.dataloader.DataLoader), 'dataloader must be of type torch.utils.data.dataloader.DataLoader'
 
         self.augmentation_distributions = {
-            'easy':EasyTransformations(image_size=image_size, mean=mean, std=std),
-            'meduim': MeduimTransformations(image_size=image_size, mean=mean, std=std),
-            'hard':HardTransformations(image_size=image_size, mean=mean, std=std)
+            'easy':EasyTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
+            'meduim': MeduimTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
+            'hard':HardTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations)
         }
         self.dataloader = dataloader  
         self.number_of_runs = number_of_runs
         self.supervised=supervised
+        self.verbose = verbose
+        self.seed = seed
 
     def calculate_mqm(self, representations, labels):
-        print(len(representations))
+        n_embeddings = representations.size(-1)
         if self.supervised:
             unique_labels = torch.unique(torch.tensor(labels), sorted=True, return_inverse=False)
             
@@ -37,10 +43,8 @@ class ImageCentriodMQM():
 
             for label in unique_labels:
                 indices = (torch.tensor(labels) == torch.tensor(label))
-                indices = indices.nonzero()
-                indices = torch.tensor([int(index[0]) for index in indices])
-
-                centriods = torch.mean(representations[indices], dim=1)
+                cluster_reps = representations[indices].reshape(self.number_of_runs, -1, n_embeddings)
+                centriods = torch.mean(cluster_reps, dim=1)
                 distance_matrix = torch.cdist(centriods, centriods, p=2)
                 centroid_mqm += torch.mean(distance_matrix)
             
@@ -53,10 +57,10 @@ class ImageCentriodMQM():
         
         return centroid_mqm
 
-    def generate_representations(self, model, augmentations):
+    def generate_representations(self, model, augmentations, run_number):
         representations = []
         labels = []
-        seed = random.randint(0, 100000)
+        seed = self.seed if self.seed else random.randint(0, 100000)
         device = next(model.parameters()).device
 
         for batch in self.dataloader:
@@ -64,15 +68,14 @@ class ImageCentriodMQM():
                 image, label = batch
                 labels.extend(label)
             else:
-                torch.manual_seed(seed)
                 image = batch
-                
-            image = augmentations(image)
+            image = augmentations(image, seed+run_number)
     
             with torch.no_grad():
                 representations.append(model(image.to(device)).cpu())
 
         representations = torch.cat(representations, dim=0)
+
         if self.supervised:
             return representations, labels
         else:
@@ -94,15 +97,17 @@ class ImageCentriodMQM():
         augmented_representations = []
         augmented_labels =[]
 
-        for _ in tqdm(range(self.number_of_runs)):
+        for n in tqdm(range(self.number_of_runs), disable= not self.verbose):
 
             if self.supervised:
-                representations, labels = self.generate_representations(model, augmentation_distributions)
-                augmented_labels.extend(labels)
+                representations, labels = self.generate_representations(model, augmentation_distributions, n)
+                representations = representations.unsqueeze(0)
+                augmented_labels.append(labels)
             else:
-                representations = self.generate_representations(model, augmentation_distributions)
-            augmented_representations.extend(representations)
-        
+                representations = self.generate_representations(model, augmentation_distributions, n).unsqueeze(0)
+            augmented_representations.extend(representations.detach().numpy())
+
+        augmented_representations = torch.tensor(augmented_representations)
         centriod_mqm = self.calculate_mqm(augmented_representations, augmented_labels)
 
         if training_state:
@@ -122,25 +127,27 @@ class ImagePointWiseMQM(ImageCentriodMQM):
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225],
         number_of_runs=10,
-        supervised=False):
+        supervised=False,
+        number_transformations=5,
+        seed=None,
+        verbose=False,):
 
-        super().__init__(dataloader, image_size, mean, std, number_of_runs, supervised)
+        super().__init__(dataloader, image_size, mean, std, number_of_runs, supervised, number_transformations, seed, verbose)
+
 
     def calculate_mqm(self, representations, labels):
-
+        n_embeddings = representations.size(-1)
         if self.supervised:
-            labels = torch.unique(labels, sorted=True, return_inverse=False)
-            
+            unique_labels = torch.unique(torch.tensor(labels), sorted=True, return_inverse=False)            
             point_wise_mqm = 0
 
-            for label in labels:
-                indices = labels == label
-                indices = indices.nonzero()
-
-                distance_matrix = torch.cdist(representations, representations, p=2)
+            for label in unique_labels:
+                indices = (torch.tensor(labels) == torch.tensor(label))
+                cluster_reps = representations[indices].reshape(self.number_of_runs, -1, n_embeddings)
+                distance_matrix = torch.cdist(cluster_reps, cluster_reps, p=2)
                 point_wise_mqm += torch.mean(distance_matrix)
             
-            point_wise_mqm /= len(labels)
+            point_wise_mqm /= len(unique_labels)
 
         else:
             distance_matrix = torch.cdist(representations, representations, p=2)
