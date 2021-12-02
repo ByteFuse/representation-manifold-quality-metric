@@ -14,36 +14,11 @@ from pytorch_lightning.callbacks import RichModelSummary
 
 import wandb
 
-from src.data.images import ImageSet, QueryReferenceImageSet
+from src.data.image import ImageSet, QueryReferenceImageSet
+from src.data.utils import load_cub_dataset, load_cifar100_dataset, load_cifar10_dataset, load_cars_dataset
 from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss
-from src.models import MlpImageEncoder, LeNet
+from src.models import CifarResNet18, ResnetImageEncoder
 from src.utils import plot_embeddings_unimodal, flatten_dict
-
-
-def load_mnist_dataset():
-    # getting data directory location
-    dir = os.path.dirname(__file__)
-    data_dir = os.path.join(dir, "data/mnist/")
-    print(data_dir)
-
-    mnist_train = torchvision.datasets.MNIST(
-        root=data_dir,
-        train=True,
-        transform=torchvision.transforms.ToTensor(),
-        target_transform=None,
-        download=False
-    )
-
-
-    mnist_test = torchvision.datasets.MNIST(
-        root=data_dir,
-        train=False,
-        transform=torchvision.transforms.ToTensor(),
-        target_transform=None,
-        download=False
-    )
-
-    return mnist_train, mnist_test
 
 
 class TrainerQueryRefrenceSet(pl.LightningDataModule):
@@ -52,6 +27,8 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
         self,
         transform1,
         transform2,
+        val_transform,
+        dataset_name,
         batch_size=64,
         num_workers=0):
         super().__init__()
@@ -59,24 +36,32 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
         self.transform1 = transform1
         self.transform2 = transform2
 
-        self.val_transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
+        self.val_transform = val_transform
 
         self.batch_size = batch_size
         self.num_workers = num_workers
 
+        loaders = {
+            'cifar10': load_cifar10_dataset,
+            'cifar100': load_cifar100_dataset,
+            'cub': load_cub_dataset,
+            'cars196': load_cars_dataset
+        }
+        self.loader = loaders[dataset_name]
+
     def setup(self, stage=None):
 
-        mnist_train, mnist_test = load_mnist_dataset()
+        train, test = self.loader()
 
         self.train_data = QueryReferenceImageSet(
-            mnist_train, 
+            train, 
             self.transform1,
             self.transform2,
             labels=True
         )
 
         self.val_data = QueryReferenceImageSet(
-            mnist_test, 
+            test, 
             self.val_transform,
             self.transform2,
             labels=True
@@ -110,29 +95,38 @@ class TrainerSingleImageSet(pl.LightningDataModule):
     def __init__(
         self,
         transform,
+        val_transform,
+        dataset_name,
         batch_size=64,
         num_workers=0):
         super().__init__()
 
         self.transform = transform
 
-        self.val_transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
+        self.val_transform = val_transform
 
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-    def setup(self, stage=None):
+        loaders = {
+            'cifar10': load_cifar10_dataset,
+            'cifar100': load_cifar100_dataset,
+            'cub': load_cub_dataset,
+            'cars196': load_cars_dataset
+        }
+        self.loader = loaders[dataset_name]
 
-        mnist_train, mnist_test = load_mnist_dataset()
+    def setup(self, stage=None):
+        train, test = self.loader(os.path.dirname(__file__))
 
         self.train_data = ImageSet(
-            mnist_train, 
+            train, 
             self.transform,
             labels=True
         )
 
         self.val_data = ImageSet(
-            mnist_test, 
+            test, 
             self.val_transform,
             labels=True
         )
@@ -289,6 +283,7 @@ class ImageEncoder(pl.LightningModule):
             "global_step": self.global_step
             })
 
+
 @hydra.main(config_path="config", config_name="config")
 def main(cfg: DictConfig):
 
@@ -297,39 +292,38 @@ def main(cfg: DictConfig):
     # setup augmentations
     transform1 = torchvision.transforms.Compose([
         torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
-        torchvision.transforms.RandomCrop((28,28)),
-        torchvision.transforms.GaussianBlur(3),
-        torchvision.transforms.RandomRotation(15),
-        torchvision.transforms.Normalize((0.1307,), (0.3081,))
+        torchvision.transforms.RandomCrop((cfg.data.size,cfg.data.size)),
+        torchvision.transforms.GaussianBlur(cfg.data.blur_kernel),
+        torchvision.transforms.RandomRotation(cfg.data.rotation),
+        torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std),
     ])
 
     transform2 = torchvision.transforms.Compose([
+        torchvision.transforms.Resize((cfg.data.size,cfg.data.size)),
         torchvision.transforms.RandomPerspective(0.5, 0.8),
-        torchvision.transforms.Normalize((0.1307,), (0.3081,))
+        torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std)
     ])
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
-        torchvision.transforms.RandomCrop((28,28)),
-        torchvision.transforms.GaussianBlur(3),
+        torchvision.transforms.RandomCrop((cfg.data.size,cfg.data.size)),
+        torchvision.transforms.GaussianBlur(cfg.data.blur_kernel),
         torchvision.transforms.RandomPerspective(0.5, 0.5),
-        torchvision.transforms.Normalize((0.1307,), (0.3081,))
+        torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std)
     ])
     
     # setup encoder
-    if cfg.encoder.encoder == 'mlp':
-        encoder = MlpImageEncoder(
+    if 'cifar' in cfg.data.name:
+        encoder = CifarResNet18(
             embedding_dim=cfg.encoder.embedding_dim, 
-            hidden_dim=cfg.encoder.hidden_dim, 
-            n_internal_layers=cfg.encoder.n_internal_layers, 
-            dropout=cfg.encoder.dropout,
             logits=cfg.encoder.logits,
             number_classes=cfg.encoder.number_classes
         )
-    elif cfg.encoder.encoder == 'conv':
-        encoder = LeNet(
+    else:
+        encoder = ResnetImageEncoder(
             embedding_dim=cfg.encoder.embedding_dim, 
-            dropout=cfg.encoder.dropout,
+            resnet_size=18,
+            pretrained=cfg.encoder.pretrained,
             logits=cfg.encoder.logits,
             number_classes=cfg.encoder.number_classes
         )
@@ -365,8 +359,10 @@ def main(cfg: DictConfig):
     else:
         data = TrainerSingleImageSet(
             transform=transform, 
+            dataset_name=cfg.data.name,
             batch_size=cfg.data.batch_size, 
-            num_workers=cfg.data.num_workers
+            num_workers=cfg.data.num_workers,
+            val_transform=torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std)
         )
 
         model = ImageEncoder(

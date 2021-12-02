@@ -1,0 +1,10 @@
+name: 'cub'
+mean: [0.485605, 0.499317 ,0.4322325]
+std: [0.1784089, 0.177739, 0.189464]
+resize: 256
+size: 224
+blur_kernel: 5
+rotation: 45
+batch_size: 32
+num_workers: 2
+dataset: "image-label"

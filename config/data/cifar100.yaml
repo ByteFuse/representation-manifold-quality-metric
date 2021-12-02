@@ -1,0 +1,10 @@
+name: 'cifar100'
+mean: [0.49139968, 0.48215827 ,0.44653124]
+std: [0.24703233, 0.24348505, 0.26158768]
+resize: 40
+size: 32
+blur_kernel: 5
+rotation: 45
+batch_size: 32
+num_workers: 2
+dataset: "image-label"

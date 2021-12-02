@@ -1,0 +1,10 @@
+name: 'cars'
+mean: [0.470739, 0.460008, 0.454802]
+std: [0.263764, 0.262857, 0.267761]
+resize: 256
+size: 224
+blur_kernel: 5
+rotation: 45
+batch_size: 32
+num_workers: 2
+dataset: "image-label"

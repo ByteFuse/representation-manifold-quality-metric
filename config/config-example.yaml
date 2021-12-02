@@ -7,4 +7,9 @@ defaults:
 n_batches_accumalation: 8
 
 secrets:
-  wandb_key: '*'
+  wandb_key: '*'da  
+
+hydra:
+  sweep:
+    dir: multirun
+    subdir: ${hydra.job.override_dirname}

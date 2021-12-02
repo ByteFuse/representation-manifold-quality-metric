@@ -8,9 +8,7 @@ import torchvision
 from src.data.image import GenericImageSet
 
 
-def load_cars_dataset():
-
-    dir = os.path.dirname(__file__)
+def load_cars_dataset(dir):
     data_dir = os.path.join(dir, "data/cars/")
 
     data = pd.read_csv(os.path.join(data_dir,"cars_train.csv"))
@@ -23,9 +21,7 @@ def load_cars_dataset():
     return cars_train, cars_test
 
 
-def load_cub_dataset():
-    # getting data directory location
-    dir = os.path.dirname(__file__)
+def load_cub_dataset(dir):
     data_dir = os.path.join(dir, "data/cub/CUB_200_2011/")
 
     images = pd.read_csv(os.path.join(data_dir, 'images.txt'), names=['id', 'image'], sep=' ')
@@ -42,12 +38,9 @@ def load_cub_dataset():
     return cub_train, cub_test
 
 
-def load_cifar100_dataset():
-    # getting data directory location
-    dir = os.path.dirname(__file__)
-    data_dir = os.path.join(dir, "data/cifar100/")
-    print(data_dir)
+def load_cifar100_dataset(dir):
 
+    data_dir = os.path.join(dir, "data/cifar100/")
     cifar100_train = torchvision.datasets.CIFAR100(
         root=data_dir,
         train=True,
@@ -67,11 +60,9 @@ def load_cifar100_dataset():
     return cifar100_train, cifar100_test
 
 
-def load_cifar10_dataset():
-    # getting data directory location
-    dir = os.path.dirname(__file__)
-    data_dir = os.path.join(dir, "data/cifar10/")
+def load_cifar10_dataset(dir):
 
+    data_dir = os.path.join(dir, "data/cifar10/")
     cifar10_train = torchvision.datasets.CIFAR10(
         root=data_dir,
         train=True,
