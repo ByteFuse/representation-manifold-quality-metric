@@ -1,15 +1,17 @@
 defaults:
-  - encoder: mnist
-  - data: mnist
+  - encoder: resnet
+  - data: cifar10
   - optim: adam
-  - loss: ntxent
+  - loss: triplet_supervised
 
 n_batches_accumalation: 8
 
 secrets:
-  wandb_key: '*'da  
+  wandb_key: ''
 
 hydra:
+  run:
+    dir: ./outputs/${data.name}/${loss.name}/${hydra.job.name}/
   sweep:
-    dir: multirun
+    dir: multirun/${data.name}
     subdir: ${hydra.job.override_dirname}
