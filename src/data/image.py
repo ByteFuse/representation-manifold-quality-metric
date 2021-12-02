@@ -1,4 +1,28 @@
+import os
+
+from PIL import Image
 import torch
+import torchvision
+
+class GenericImageSet(torch.utils.data.Dataset):
+
+    def __init__(self, metadata, root_dir):
+
+        self.images = metadata['image']
+        self.labels = metadata['class']
+        self.images = [os.path.join(root_dir, image) for image in self.images]
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        image_path = self.images[idx]
+
+        image = torchvision.transforms.ToTensor()(Image.open(image_path))
+        label = self.labels[idx]
+
+        return image, label
+
 
 class ImageSet(torch.utils.data.Dataset):
 

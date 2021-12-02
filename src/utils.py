@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 
 import torchvision
 
+
 def plot_embeddings_unimodal(plot_data, epoch, return_fig=False):
     embeddings = []
     labels = []
