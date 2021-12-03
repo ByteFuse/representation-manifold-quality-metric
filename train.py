@@ -51,7 +51,7 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        train, test = self.loader()
+        train, test = self.loader('../../../../')
 
         self.train_data = QueryReferenceImageSet(
             train, 
@@ -75,6 +75,7 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
             shuffle=True,
             drop_last = True,
             pin_memory=True,
+            persistent_workers=True,
             num_workers=self.num_workers
         )
 
@@ -85,6 +86,7 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
             shuffle=False,
             drop_last = True,
             pin_memory=True,
+            persistent_workers=True,
             num_workers=self.num_workers
         )
 
@@ -117,7 +119,7 @@ class TrainerSingleImageSet(pl.LightningDataModule):
         self.loader = loaders[dataset_name]
 
     def setup(self, stage=None):
-        train, test = self.loader(os.path.dirname(__file__))
+        train, test = self.loader('../../../../')
 
         self.train_data = ImageSet(
             train, 
@@ -139,6 +141,7 @@ class TrainerSingleImageSet(pl.LightningDataModule):
             shuffle=True,
             drop_last = True,
             pin_memory=True,
+            persistent_workers=True,
             num_workers=self.num_workers
         )
 
@@ -149,6 +152,7 @@ class TrainerSingleImageSet(pl.LightningDataModule):
             shuffle=False,
             drop_last = True,
             pin_memory=True,
+            persistent_workers=True,
             num_workers=self.num_workers
         )
 
@@ -348,6 +352,8 @@ def main(cfg: DictConfig):
             transform1=transform1, 
             transform2=transform2, 
             batch_size=cfg.data.batch_size, 
+            dataset_name=cfg.data.name,
+            val_transform=torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std),
             num_workers=cfg.data.num_workers
         )
 
@@ -374,7 +380,7 @@ def main(cfg: DictConfig):
 
     # set up wandb and trainers
     wandb.login(key=cfg.secrets.wandb_key)
-    wandb_logger = WandbLogger(project='mqm', config=flatten_dict(cfg), entity='lambda-ai')
+    wandb_logger = WandbLogger(project='mqm', config=flatten_dict(cfg), )
 
     checkpoint_callback = ModelCheckpoint(
         dirpath='checkpoints', 
@@ -383,25 +389,25 @@ def main(cfg: DictConfig):
         monitor='valid_loss',
         save_weights_only=False
     )
-    early_stop_callback = EarlyStopping(
-        monitor="valid_loss", 
-        min_delta=0.00,
-        patience=3,
-        verbose=False,
-        mode="min"
-    )
+    # early_stop_callback = EarlyStopping(
+    #     monitor="valid_loss", 
+    #     min_delta=0.00,
+    #     patience=30,
+    #     verbose=False,
+    #     mode="min"
+    # )
 
     trainer = pl.Trainer(
         logger=wandb_logger,    
         log_every_n_steps=2,   
         gpus=None if not torch.cuda.is_available() else -1,
-        max_epochs=500,           
+        max_epochs=100,           
         deterministic=True, 
         accumulate_grad_batches=cfg.n_batches_accumalation,
         precision=32 if not torch.cuda.is_available() else 16,   
         profiler="simple",
         gradient_clip_val=cfg.optim.gradient_clip_val,
-        callbacks=[checkpoint_callback, early_stop_callback, RichModelSummary()],
+        callbacks=[checkpoint_callback, RichModelSummary()],
     )
 
     # fit the model
