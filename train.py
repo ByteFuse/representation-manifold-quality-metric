@@ -51,7 +51,7 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        train, test = self.loader('../../../../')
+        train, test = self.loader('../../../../../')
 
         self.train_data = QueryReferenceImageSet(
             train, 
@@ -119,7 +119,7 @@ class TrainerSingleImageSet(pl.LightningDataModule):
         self.loader = loaders[dataset_name]
 
     def setup(self, stage=None):
-        train, test = self.loader('../../../../')
+        train, test = self.loader('../../../../../')
 
         self.train_data = ImageSet(
             train, 

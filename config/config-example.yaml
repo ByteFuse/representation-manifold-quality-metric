@@ -4,14 +4,19 @@ defaults:
   - optim: adam
   - loss: triplet_supervised
 
-n_batches_accumalation: 8
+n_batches_accumalation: 16
 
 secrets:
-  wandb_key: ''
+  wandb_key: '*'
 
 hydra:
   run:
-    dir: ./outputs/${data.name}/${loss.name}/${hydra.job.name}/
+    dir: ./outputs/${data.name}/${loss.name}/${now:%Y-%m-%d_%H-%M-%S}/
   sweep:
-    dir: multirun/${data.name}
-    subdir: ${hydra.job.override_dirname}
+    dir: multirun/${loss.name}/${optim.name}/
+    subdir: ${hydra.job.override_dirname}/data=${data.name}
+  job:
+    config:
+      override_dirname:
+        exclude_keys:
+          - data
