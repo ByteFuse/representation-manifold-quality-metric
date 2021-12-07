@@ -1,4 +1,5 @@
-resize: 28
-dataset: "image-label"
-batch_size: 68
-num_workers: 3
+name: 'mnist'
+resize: 32
+dataset: "query-reference"
+batch_size: 256
+num_workers: 2

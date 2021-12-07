@@ -201,8 +201,8 @@ class LeNet(nn.Module):
             stride=1
         )
 
-        self.pool1 = nn.AvgPool2d(kernel_size=2)
-        self.pool2 = nn.AvgPool2d(kernel_size=2)
+        self.pool1 = nn.MaxPool2d(kernel_size=2)
+        self.pool2 = nn.MaxPool2d(kernel_size=2)
         
         self.fc1 = nn.Linear(256, 512)  
         self.fc2 = nn.Linear(512, 512)
