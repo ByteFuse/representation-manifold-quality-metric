@@ -1,3 +1,3 @@
 embedding_dim: 128
 logits: False
-number_classes: 10
+number_classes: None

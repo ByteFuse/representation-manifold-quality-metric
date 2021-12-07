@@ -1,10 +1,10 @@
 name: 'cifar10'
 mean: [0.49139968, 0.48215827 ,0.44653124]
 std: [0.24703233, 0.24348505, 0.26158768]
-resize: 40
 size: 32
-blur_kernel: 5
+blur_kernel: 3
 rotation: 45
 batch_size: 256
+n_batches_accumalation: 4
 num_workers: 4
-dataset: "image-label"
+dataset: "query-reference"

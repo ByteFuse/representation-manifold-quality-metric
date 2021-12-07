@@ -25,17 +25,14 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
  
     def __init__(
         self,
-        transform1,
-        transform2,
+        transform,
         val_transform,
         dataset_name,
         batch_size=64,
         num_workers=0):
         super().__init__()
 
-        self.transform1 = transform1
-        self.transform2 = transform2
-
+        self.transform = transform
         self.val_transform = val_transform
 
         self.batch_size = batch_size
@@ -51,19 +48,19 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        train, test = self.loader('../../../../../')
+        train, test = self.loader('../')
 
         self.train_data = QueryReferenceImageSet(
             train, 
-            self.transform1,
-            self.transform2,
+            self.transform,
+            self.transform,
             labels=True
         )
 
         self.val_data = QueryReferenceImageSet(
             test, 
+            self.transform,
             self.val_transform,
-            self.transform2,
             labels=True
         )
 
@@ -89,7 +86,6 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
             persistent_workers=True,
             num_workers=self.num_workers
         )
-
 
 
 class TrainerSingleImageSet(pl.LightningDataModule):
@@ -170,7 +166,6 @@ class QueryRefrenceImageEncoder(pl.LightningModule):
         self.encoder = encoder
         self.optim_cfg = optim_cfg
         self.loss_func = loss_fn
-        self.val_transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
 
     def configure_optimizers(self):        
         params = list(self.parameters())
@@ -232,7 +227,6 @@ class ImageEncoder(pl.LightningModule):
         self.optim_cfg = optim_cfg
         self.loss_func = loss_fn
         self.logits = logits
-        self.val_transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
 
     def configure_optimizers(self):        
         params = list(self.parameters())
@@ -293,29 +287,16 @@ def main(cfg: DictConfig):
 
     pl.utilities.seed.seed_everything(42)
 
-    # setup augmentations
-    transform1 = torchvision.transforms.Compose([
-        torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
-        torchvision.transforms.RandomCrop((cfg.data.size,cfg.data.size)),
-        torchvision.transforms.GaussianBlur(cfg.data.blur_kernel),
-        torchvision.transforms.RandomRotation(cfg.data.rotation),
-        torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std),
-    ])
-
-    transform2 = torchvision.transforms.Compose([
-        torchvision.transforms.Resize((cfg.data.size,cfg.data.size)),
-        torchvision.transforms.RandomPerspective(0.5, 0.8),
-        torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std)
-    ])
-
     transform = torchvision.transforms.Compose([
-        torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
-        torchvision.transforms.RandomCrop((cfg.data.size,cfg.data.size)),
+        torchvision.transforms.RandomResizedCrop(size=(cfg.data.resize,cfg.data.resize)),
+        torchvision.transforms.RandomHorizontalFlip(),
+        torchvision.transforms.RandomApply([torchvision.transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)], p=0.8),
+        torchvision.transforms.RandomGrayscale(p=0.2),
         torchvision.transforms.GaussianBlur(cfg.data.blur_kernel),
-        torchvision.transforms.RandomPerspective(0.5, 0.5),
+        torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std),
         torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std)
     ])
-    
+
     # setup encoder
     if 'cifar' in cfg.data.name:
         encoder = CifarResNet18(
@@ -347,10 +328,9 @@ def main(cfg: DictConfig):
         loss = NtXentLoss(temperature=cfg.loss.temperature)
 
     # setup dataset
-    if cfg.data.dataset == 'query-reference':
+    if cfg.loss.dataset == 'query-reference':
         data = TrainerQueryRefrenceSet(
-            transform1=transform1, 
-            transform2=transform2, 
+            transform=transform, 
             batch_size=cfg.data.batch_size, 
             dataset_name=cfg.data.name,
             val_transform=torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std),
@@ -387,15 +367,9 @@ def main(cfg: DictConfig):
         filename='{epoch}-{valid_loss:.2f}', 
         save_top_k=5, 
         monitor='valid_loss',
-        save_weights_only=False
+        save_weights_only=False,
+        save_last=True
     )
-    # early_stop_callback = EarlyStopping(
-    #     monitor="valid_loss", 
-    #     min_delta=0.00,
-    #     patience=30,
-    #     verbose=False,
-    #     mode="min"
-    # )
 
     trainer = pl.Trainer(
         logger=wandb_logger,    

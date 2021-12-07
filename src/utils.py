@@ -6,6 +6,7 @@ import pandas as pd
 import seaborn as sns
 
 from sklearn.decomposition import PCA
+from umap import UMAP
 
 import torchvision
 
@@ -23,7 +24,7 @@ def plot_embeddings_unimodal(plot_data, epoch, return_fig=False):
 
     labels = [str(int(i.cpu())) for i in labels]
 
-    embeddings = PCA(2).fit_transform(embeddings)
+    embeddings = UMAP().fit_transform(embeddings)
     embeddings = np.array(embeddings)
 
     df = pd.DataFrame({

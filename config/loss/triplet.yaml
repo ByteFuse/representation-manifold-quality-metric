@@ -1,2 +1,3 @@
 name: "triplet"
 margin: 0.5
+dataset: "query-reference"
