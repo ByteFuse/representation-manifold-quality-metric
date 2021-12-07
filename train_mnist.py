@@ -14,17 +14,15 @@ from pytorch_lightning.callbacks import RichModelSummary
 
 import wandb
 
-from src.data.images import ImageSet, QueryReferenceImageSet
+from src.data.image import ImageSet, QueryReferenceImageSet
 from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss
-from src.models import MlpImageEncoder, LeNet
+from src.models import LeNet
 from src.utils import plot_embeddings_unimodal, flatten_dict
 
 
 def load_mnist_dataset():
     # getting data directory location
-    dir = os.path.dirname(__file__)
-    data_dir = os.path.join(dir, "data/mnist/")
-    print(data_dir)
+    data_dir = os.path.join('../../../../../', "data/mnist/")
 
     mnist_train = torchvision.datasets.MNIST(
         root=data_dir,
@@ -298,7 +296,6 @@ def main(cfg: DictConfig):
     transform1 = torchvision.transforms.Compose([
         torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
         torchvision.transforms.RandomCrop((28,28)),
-        torchvision.transforms.GaussianBlur(3),
         torchvision.transforms.RandomRotation(15),
         torchvision.transforms.Normalize((0.1307,), (0.3081,))
     ])
@@ -311,28 +308,17 @@ def main(cfg: DictConfig):
     transform = torchvision.transforms.Compose([
         torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
         torchvision.transforms.RandomCrop((28,28)),
-        torchvision.transforms.GaussianBlur(3),
         torchvision.transforms.RandomPerspective(0.5, 0.5),
         torchvision.transforms.Normalize((0.1307,), (0.3081,))
     ])
     
     # setup encoder
-    if cfg.encoder.encoder == 'mlp':
-        encoder = MlpImageEncoder(
-            embedding_dim=cfg.encoder.embedding_dim, 
-            hidden_dim=cfg.encoder.hidden_dim, 
-            n_internal_layers=cfg.encoder.n_internal_layers, 
-            dropout=cfg.encoder.dropout,
-            logits=cfg.encoder.logits,
-            number_classes=cfg.encoder.number_classes
-        )
-    elif cfg.encoder.encoder == 'conv':
-        encoder = LeNet(
-            embedding_dim=cfg.encoder.embedding_dim, 
-            dropout=cfg.encoder.dropout,
-            logits=cfg.encoder.logits,
-            number_classes=cfg.encoder.number_classes
-        )
+    encoder = LeNet(
+        embedding_dim=cfg.encoder.embedding_dim, 
+        dropout=cfg.encoder.dropout,
+        logits=cfg.encoder.logits,
+        number_classes=cfg.encoder.number_classes
+    )
 
     # setup loss
     if cfg.loss.name == 'triplet':
@@ -378,7 +364,7 @@ def main(cfg: DictConfig):
 
     # set up wandb and trainers
     wandb.login(key=cfg.secrets.wandb_key)
-    wandb_logger = WandbLogger(project='mqm', config=flatten_dict(cfg), entity='lambda-ai')
+    wandb_logger = WandbLogger(project='mqm', config=flatten_dict(cfg))
 
     checkpoint_callback = ModelCheckpoint(
         dirpath='checkpoints', 
@@ -387,25 +373,20 @@ def main(cfg: DictConfig):
         monitor='valid_loss',
         save_weights_only=False
     )
-    early_stop_callback = EarlyStopping(
-        monitor="valid_loss", 
-        min_delta=0.00,
-        patience=3,
-        verbose=False,
-        mode="min"
-    )
+
+    print(torch.cuda.is_available())
 
     trainer = pl.Trainer(
         logger=wandb_logger,    
         log_every_n_steps=2,   
         gpus=None if not torch.cuda.is_available() else -1,
-        max_epochs=500,           
+        max_epochs=100,           
         deterministic=True, 
         accumulate_grad_batches=cfg.n_batches_accumalation,
         precision=32 if not torch.cuda.is_available() else 16,   
         profiler="simple",
         gradient_clip_val=cfg.optim.gradient_clip_val,
-        callbacks=[checkpoint_callback, early_stop_callback, RichModelSummary()],
+        callbacks=[checkpoint_callback, RichModelSummary()],
     )
 
     # fit the model
