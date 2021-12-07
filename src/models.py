@@ -64,7 +64,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, embedding_dim, logits=False, number_classes=None):
+    def __init__(self, block, num_blocks, embedding_dim, hidden_dim, logits=False, number_classes=None):
         super(ResNet, self).__init__()
 
         self.logits = logits
@@ -78,7 +78,13 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.embedding_layer = nn.Linear(512*block.expansion, embedding_dim)
+        self.embedding_layer = nn.Sequential(
+            nn.Linear(512*block.expansion, hidden_dim), 
+            nn.ReLU(), 
+            nn.Linear(hidden_dim, hidden_dim), 
+            nn.ReLU(), 
+            nn.Linear(hidden_dim, embedding_dim)
+        )
 
         if self.logits:
             assert isinstance(number_classes, int), "Number of classes must be provided when using logits"
@@ -111,25 +117,32 @@ class ResNet(nn.Module):
         return embeddings
 
 
-def CifarResNet18(embedding_dim, logits=False, number_classes=None):
+def CifarResNet18(embedding_dim, hidden_dim, logits=False, number_classes=None):
     # https://github.com/kuangliu/pytorch-cifar/blob/master/models/resnet.py
-    return ResNet(BasicBlock, [2, 2, 2, 2], embedding_dim, logits, number_classes)
+    return ResNet(BasicBlock, [2, 2, 2, 2], embedding_dim, hidden_dim, logits, number_classes)
 
 
 class ResnetImageEncoder(nn.Module):
-    def __init__(self, embedding_dim, resnet_size=50, pretrained=False, logits=False, number_classes=None):
+    def __init__(self, embedding_dim, hidden_dim, resnet_size=50, pretrained=False, logits=False, number_classes=None):
         assert resnet_size in [18, 50, 101], "Resnet size must be either 18, 50, 101"
         super().__init__()
 
         if resnet_size==18:
             backbone = torchvision.models.resnet18(pretrained=pretrained, progress=False)
-            backbone.fc = nn.Linear(512, embedding_dim)
+            backbone.fc = nn.Linear(512, hidden_dim)
         elif resnet_size==50:
             backbone = torchvision.models.resnet50(pretrained=pretrained, progress=False)
-            backbone.fc = nn.Linear(2048, embedding_dim)
+            backbone.fc = nn.Linear(2048, hidden_dim)
         elif resnet_size==101:
             backbone = torchvision.models.resnet101(pretrained=pretrained, progress=False)
-            backbone.fc = nn.Linear(2048, embedding_dim)
+            backbone.fc = nn.Linear(2048, hidden_dim)
+
+        self.embedding_layer = nn.Sequential(
+            nn.ReLU(), 
+            nn.Linear(hidden_dim, hidden_dim), 
+            nn.ReLU(), 
+            nn.Linear(hidden_dim, embedding_dim)
+        )
 
         self.logits = logits
 
@@ -140,7 +153,8 @@ class ResnetImageEncoder(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        embeddings = self.backbone(x)
+        out = self.backbone(x)
+        embeddings = self.embedding_laye(out)
 
         if self.logits:
             logits = self.logits_layer(self.relu(embeddings))

@@ -301,12 +301,14 @@ def main(cfg: DictConfig):
     if 'cifar' in cfg.data.name:
         encoder = CifarResNet18(
             embedding_dim=cfg.encoder.embedding_dim, 
+            hidden_dim=cfg.encoder.hidden_dim, 
             logits=cfg.encoder.logits,
             number_classes=cfg.encoder.number_classes
         )
     else:
         encoder = ResnetImageEncoder(
             embedding_dim=cfg.encoder.embedding_dim, 
+            hidden_dim=cfg.encoder.hidden_dim, 
             resnet_size=18,
             pretrained=cfg.encoder.pretrained,
             logits=cfg.encoder.logits,
