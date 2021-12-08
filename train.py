@@ -16,7 +16,7 @@ import wandb
 
 from src.data.image import ImageSet, QueryReferenceImageSet
 from src.data.utils import load_cub_dataset, load_cifar100_dataset, load_cifar10_dataset, load_cars_dataset
-from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss
+from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss, CrossEntropyLoss
 from src.models import CifarResNet18, ResnetImageEncoder
 from src.utils import plot_embeddings_unimodal, flatten_dict
 
@@ -48,7 +48,7 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        train, test = self.loader('../')
+        train, test = self.loader('../../../../../')
 
         self.train_data = QueryReferenceImageSet(
             train, 
@@ -288,7 +288,7 @@ def main(cfg: DictConfig):
     pl.utilities.seed.seed_everything(42)
 
     transform = torchvision.transforms.Compose([
-        torchvision.transforms.RandomResizedCrop(size=(cfg.data.resize,cfg.data.resize)),
+        torchvision.transforms.RandomResizedCrop(size=(cfg.data.size,cfg.data.size)),
         torchvision.transforms.RandomHorizontalFlip(),
         torchvision.transforms.RandomApply([torchvision.transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)], p=0.8),
         torchvision.transforms.RandomGrayscale(p=0.2),
@@ -328,6 +328,8 @@ def main(cfg: DictConfig):
         )
     elif cfg.loss.name == 'nt-xent':
         loss = NtXentLoss(temperature=cfg.loss.temperature)
+    elif cfg.loss.name == 'cross-entropy':
+        loss = CrossEntropyLoss()
 
     # setup dataset
     if cfg.loss.dataset == 'query-reference':
@@ -377,9 +379,9 @@ def main(cfg: DictConfig):
         logger=wandb_logger,    
         log_every_n_steps=2,   
         gpus=None if not torch.cuda.is_available() else -1,
-        max_epochs=100,           
+        max_epochs=150,           
         deterministic=True, 
-        accumulate_grad_batches=cfg.n_batches_accumalation,
+        accumulate_grad_batches=cfg.data.n_batches_accumalation,
         precision=32 if not torch.cuda.is_available() else 16,   
         profiler="simple",
         gradient_clip_val=cfg.optim.gradient_clip_val,

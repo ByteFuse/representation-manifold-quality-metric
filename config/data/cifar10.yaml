@@ -7,4 +7,3 @@ rotation: 45
 batch_size: 256
 n_batches_accumalation: 4
 num_workers: 4
-dataset: "query-reference"

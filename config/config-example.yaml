@@ -11,7 +11,7 @@ secrets:
 
 hydra:
   run:
-    dir: ./outputs/data=${data.name}/${loss.name}/${optim.name}/encoder.embedding_dim=${encoder.embedding_dim}/
+    dir: multirun/data=${data.name}/${loss.name}/${optim.name}/encoder.embedding_dim=${encoder.embedding_dim}/
   sweep:
     dir: multirun/data=${data.name}/${loss.name}/${optim.name}/
     subdir: ${hydra.job.override_dirname}/
@@ -19,4 +19,4 @@ hydra:
     config:
       override_dirname:
         exclude_keys:
-          - datac
+          - data
