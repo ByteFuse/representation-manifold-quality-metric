@@ -2,7 +2,7 @@ defaults:
   - encoder: resnet
   - data: cifar10
   - optim: adam
-  - loss: triplet_supervised
+  - loss: triplet_entropy
 
 n_batches_accumalation: 16
 
@@ -11,12 +11,12 @@ secrets:
 
 hydra:
   run:
-    dir: ./outputs/${data.name}/${loss.name}/${now:%Y-%m-%d_%H-%M-%S}/
+    dir: ./outputs/data=${data.name}/${loss.name}/${optim.name}/encoder.embedding_dim=${encoder.embedding_dim}/
   sweep:
-    dir: multirun/${loss.name}/${optim.name}/
-    subdir: ${hydra.job.override_dirname}/data=${data.name}
+    dir: multirun/data=${data.name}/${loss.name}/${optim.name}/
+    subdir: ${hydra.job.override_dirname}/
   job:
     config:
       override_dirname:
         exclude_keys:
-          - data
+          - datac

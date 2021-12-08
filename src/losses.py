@@ -63,6 +63,16 @@ class TripletLossSupervised(nn.Module):
         return loss
 
 
+class CrossEntropyLoss(nn.Module):
+    def __init__(self):
+        super().__init__() 
+        self.loss_fn = nn.CrossEntropyLoss()   
+
+    def forward(self, _, logits, labels):
+        loss = self.loss_fn(logits, labels)
+        return loss
+        
+
 class ClipLoss(nn.Module):
     def __init__(self):
         super().__init__()        
@@ -77,7 +87,6 @@ class ClipLoss(nn.Module):
         labels.cpu()
 
         return loss
-
 
 class TripletEntropyLoss(nn.Module):
 
@@ -97,7 +106,7 @@ class TripletEntropyLoss(nn.Module):
         else:
             self.cross_entropy_loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self, logits, embeddings, labels):
+    def forward(self, embeddings, logits, labels):
 
         # calculate triplet loss
         embeddings = F.normalize(embeddings, p=2, dim=1)

@@ -15,7 +15,7 @@ from pytorch_lightning.callbacks import RichModelSummary
 import wandb
 
 from src.data.image import ImageSet, QueryReferenceImageSet
-from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss
+from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss, CrossEntropyLoss
 from src.models import LeNet
 from src.utils import plot_embeddings_unimodal, flatten_dict
 
@@ -294,8 +294,7 @@ def main(cfg: DictConfig):
 
     # setup augmentations
     transform1 = torchvision.transforms.Compose([
-        torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
-        torchvision.transforms.RandomCrop((28,28)),
+        # torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
         torchvision.transforms.RandomRotation(15),
         torchvision.transforms.Normalize((0.1307,), (0.3081,))
     ])
@@ -306,8 +305,7 @@ def main(cfg: DictConfig):
     ])
 
     transform = torchvision.transforms.Compose([
-        torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
-        torchvision.transforms.RandomCrop((28,28)),
+        # torchvision.transforms.Resize((cfg.data.resize,cfg.data.resize)),
         torchvision.transforms.RandomPerspective(0.5, 0.5),
         torchvision.transforms.Normalize((0.1307,), (0.3081,))
     ])
@@ -333,9 +331,11 @@ def main(cfg: DictConfig):
         )
     elif cfg.loss.name == 'nt-xent':
         loss = NtXentLoss(temperature=cfg.loss.temperature)
+    elif cfg.loss.name == 'cross-entropy':
+        loss = CrossEntropyLoss()
 
     # setup dataset
-    if cfg.data.dataset == 'query-reference':
+    if cfg.loss.dataset == 'query-reference':
         data = TrainerQueryRefrenceSet(
             transform1=transform1, 
             transform2=transform2, 
@@ -371,7 +371,8 @@ def main(cfg: DictConfig):
         filename='{epoch}-{valid_loss:.2f}', 
         save_top_k=5, 
         monitor='valid_loss',
-        save_weights_only=False
+        save_weights_only=False,
+        save_last=True
     )
 
     print(torch.cuda.is_available())
@@ -379,11 +380,11 @@ def main(cfg: DictConfig):
     trainer = pl.Trainer(
         logger=wandb_logger,    
         log_every_n_steps=2,   
-        gpus=None if not torch.cuda.is_available() else -1,
-        max_epochs=100,           
+        # gpus=None if not torch.cuda.is_available() else -1,
+        max_epochs=7,          
         deterministic=True, 
-        accumulate_grad_batches=cfg.n_batches_accumalation,
-        precision=32 if not torch.cuda.is_available() else 16,   
+        accumulate_grad_batches=cfg.data.n_batches_accumalation,
+        # precision=32 if not torch.cuda.is_available() else 16,   
         profiler="simple",
         gradient_clip_val=cfg.optim.gradient_clip_val,
         callbacks=[checkpoint_callback, RichModelSummary()],

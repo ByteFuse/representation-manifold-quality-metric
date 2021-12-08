@@ -201,27 +201,38 @@ class LeNet(nn.Module):
         super().__init__()
 
         # our in channel here are 1 because of our input size 1x28x28
-        self.conv1 = nn.Conv2d(
-            in_channels=1,
-            out_channels=6,
-            kernel_size=5,
-            stride=1
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(
+                in_channels=1,
+                out_channels=6,
+                kernel_size=5,
+                stride=1
+            ),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
         )
         
-        self.conv2 = nn.Conv2d(
-            in_channels=6,
-            out_channels=16,
-            kernel_size=5,
-            stride=1
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(
+                in_channels=6,
+                out_channels=16,
+                kernel_size=5,
+                stride=1
+            ),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
         )
 
-        self.pool1 = nn.MaxPool2d(kernel_size=2)
-        self.pool2 = nn.MaxPool2d(kernel_size=2)
-        
-        self.fc1 = nn.Linear(256, 512)  
-        self.fc2 = nn.Linear(512, 512)
+        self.embedding_layer = nn.Sequential(
+            nn.Linear(256, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512), # projection head
+            nn.ReLU(),
+            nn.Linear(512, embedding_dim),
+        )
 
-        self.embedding_layer = nn.Linear(512, embedding_dim)
 
         self.logits = logits
         if logits:
@@ -230,22 +241,12 @@ class LeNet(nn.Module):
             self.embedding_relu = nn.ReLU()
 
         self.activation = nn.ReLU()
-        self.dropout1 = nn.Dropout(dropout)
-        self.dropout2 = nn.Dropout(dropout)
-        self.dropout3 = nn.Dropout(dropout)
 
     def forward(self, x):
 
-        x = self.pool1(self.activation(self.conv1(x)))
-        x = self.dropout1(x)
-        x = self.pool2(self.activation(self.conv2(x)))
-        x = self.dropout2(x)
-
+        x = self.conv1(x)
+        x =  self.conv2(x)
         x = torch.flatten(x, 1)
-        x = self.activation(self.fc1(x))
-        x = self.dropout3(x)
-        x = self.activation(self.fc2(x))
-
         embedding = self.embedding_layer(x)
 
         if self.logits:

@@ -1,5 +1,5 @@
 name: 'mnist'
 resize: 32
-dataset: "query-reference"
-batch_size: 256
-num_workers: 2
+batch_size: 64
+num_workers: 8
+n_batches_accumalation: 8

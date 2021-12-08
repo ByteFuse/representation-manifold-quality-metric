@@ -1,5 +1,5 @@
 encoder: "conv"
-embedding_dim: 128
+embedding_dim: 3
 logits: False
 number_classes: None
 
