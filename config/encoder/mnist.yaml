@@ -1,7 +1,7 @@
 encoder: "conv"
-embedding_dim: 128
-logits: True
-number_classes: 10
+embedding_dim: 3
+logits: False
+number_classes: None
 
 # mlp hyperparameters
 hidden_dim: 128

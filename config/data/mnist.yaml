@@ -1,4 +1,5 @@
-resize: 28
-dataset: "image-label"
-batch_size: 68
-num_workers: 3
+name: 'mnist'
+resize: 32
+batch_size: 64
+num_workers: 8
+n_batches_accumalation: 8

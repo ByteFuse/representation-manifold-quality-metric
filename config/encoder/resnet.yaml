@@ -1,0 +1,4 @@
+embedding_dim: 1024
+hidden_dim: 1024
+logits: False
+number_classes: None

@@ -28,7 +28,7 @@ def download_cifar10(save_location):
     torchvision.datasets.CIFAR10(
         root=save_location,
         train=False,
-        transform=None,
+        transform=torchvision.transforms.ToTensor(),
         target_transform=None,
         download=True
     )
@@ -36,7 +36,7 @@ def download_cifar10(save_location):
     torchvision.datasets.CIFAR10(
         root=save_location,
         train=True,
-        transform=None,
+        transform=torchvision.transforms.ToTensor(),
         target_transform=None,
         download=True
     )
@@ -46,7 +46,7 @@ def download_cifar100(save_location):
     torchvision.datasets.CIFAR100(
         root=save_location,
         train=False,
-        transform=None,
+        transform=torchvision.transforms.ToTensor(),
         target_transform=None,
         download=True
     )
@@ -54,7 +54,7 @@ def download_cifar100(save_location):
     torchvision.datasets.CIFAR100(
         root=save_location,
         train=True,
-        transform=None,
+        transform=torchvision.transforms.ToTensor(),
         target_transform=None,
         download=True
     )

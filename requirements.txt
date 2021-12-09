@@ -139,12 +139,13 @@ pyDeprecate==0.3.1
 Pygments==2.10.0
 pylint==2.5.3
 PyNaCl==1.4.0
+pynndescent==0.5.5
 pyparsing==2.4.7
 pyrsistent==0.18.0
 PySocks==1.7.1
 python-dateutil==2.8.1
 python-magic==0.4.24
-pytorch-lightning==1.5.1
+pytorch-lightning==1.5.4
 pytorch-metric-learning==0.9.99
 pytz==2020.1
 PyYAML==5.3.1
@@ -175,6 +176,7 @@ smdebug-rulesconfig==1.0.1
 smmap==5.0.0
 SoundFile==0.10.3.post1
 soupsieve==2.3.1
+-e git+ssh://git@github.com/ByteFuse/measuring-manifold-quality.git@ffbe20fc221173edaace7c301ac684d5945771c5#egg=src
 statsmodels==0.13.0
 subprocess.run==0.0.8
 subprocess32==3.5.4
@@ -192,6 +194,7 @@ threadpoolctl==3.0.0
 tokenizers==0.10.3
 toml==0.10.1
 torch==1.10.0
+torchattacks==3.2.2
 torchaudio==0.10.0
 torchmetrics==0.6.0
 torchvision==0.11.1
@@ -202,6 +205,7 @@ transformers==4.12.2
 typed-ast==1.4.1
 typeguard==2.13.0
 typing-extensions==3.7.4.3
+umap-learn==0.5.2
 urllib3==1.26.7
 wandb==0.12.6
 wcwidth==0.2.5

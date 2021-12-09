@@ -1,2 +1,3 @@
 name: "triplet-supervised"
 margin: 0.5
+dataset: "image-label"
