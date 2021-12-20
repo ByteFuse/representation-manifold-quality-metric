@@ -1,4 +1,4 @@
-import os
+import glob
 
 import hydra
 from omegaconf import DictConfig
@@ -9,7 +9,6 @@ import torchvision
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import RichModelSummary
 
 import wandb
@@ -289,9 +288,9 @@ def main(cfg: DictConfig):
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.RandomResizedCrop(size=(cfg.data.size,cfg.data.size)),
-        torchvision.transforms.RandomHorizontalFlip(),
-        torchvision.transforms.RandomVerticalFlip(),
-        torchvision.transforms.RandomPerspective(),
+        torchvision.transforms.RandomHorizontalFlip(p=0.3),
+        torchvision.transforms.RandomVerticalFlip(p=0.3),
+        torchvision.transforms.RandomPerspective(distortion_scale=0.2),
         torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std),
     ])
 
@@ -362,8 +361,15 @@ def main(cfg: DictConfig):
 
     # set up wandb and trainers
     wandb.login(key=cfg.secrets.wandb_key)
-    wandb.run.log_code('../../../../../')
-    wandb_logger = WandbLogger(project='mqm', config=flatten_dict(cfg), )
+    wandb.init(project='mqm',  config=flatten_dict(cfg))
+    code = wandb.Artifact('project-source', type='code')
+    code.add_file('../../../../../train.py')
+    code.add_file('../../../../../src/data/image.py')
+    code.add_file('../../../../../src/losses.py')
+    code.add_file('../../../../../src/models.py')
+    code.add_file('../../../../../src/data/utils.py')
+    wandb.run.use_artifact(code)
+    wandb_logger = WandbLogger(project='mqm', config=flatten_dict(cfg))
 
     checkpoint_callback = ModelCheckpoint(
         dirpath='checkpoints', 
@@ -378,7 +384,7 @@ def main(cfg: DictConfig):
         logger=wandb_logger,    
         log_every_n_steps=2,   
         gpus=None if not torch.cuda.is_available() else -1,
-        max_epochs=150,           
+        max_epochs=100,           
         deterministic=True, 
         accumulate_grad_batches=cfg.data.n_batches_accumalation,
         precision=32 if not torch.cuda.is_available() else 16,   
