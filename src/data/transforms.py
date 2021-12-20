@@ -1,12 +1,115 @@
 import os
 import random
 
+import numpy as np
+
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+
 import augly.image as imaugs
 import augly.utils as augly_utils
 
 import torch
 import torchvision
 
+
+class EasyTransformations:
+
+    def __init__(
+        self,
+        image_size=224,
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+        number_transformations = 2,
+        ):
+        
+        self.mean = mean
+        self.std = std
+        self.numer_transformations = list(range(number_transformations))
+        self.image_size=image_size
+
+    def sample_transformations(self):
+                
+        random.seed()
+
+        possible_transformations = [
+            torchvision.transforms.RandomRotation(45),
+            torchvision.transforms.RandomHorizontalFlip(),
+            torchvision.transforms.RandomVerticalFlip(),
+            torchvision.transforms.RandomPerspective(),
+        ]
+
+        random_amount_of_augmentations = random.choice(self.numer_transformations)
+        return random.sample(possible_transformations, random_amount_of_augmentations)
+
+
+    def forward(self, image, seed):
+        torch.manual_seed(seed)
+        transform = torchvision.transforms.Compose(self.sample_transformations())
+        second_transform = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((self.image_size,self.image_size)),
+            torchvision.transforms.Normalize(mean=self.mean,std=self.std)
+        ])
+
+        image = second_transform(transform(image))
+        return image 
+
+
+    __call__ = forward
+
+
+class LocalTransformations:
+    """
+    Requires numpy as input!
+    """
+
+    def __init__(self, image_size=224, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], number_transformations=2):
+
+        self.mean = mean
+        self.std = std
+        self.numer_transformations = number_transformations
+        self.image_size=image_size
+
+    def sample_transformations(self):
+                
+        random.seed()
+
+        possible_transformations = [
+            A.augmentations.transforms.Blur(blur_limit=(3,5)),
+            A.augmentations.transforms.CLAHE(),
+            A.augmentations.transforms.CoarseDropout(max_holes=3, max_height=3, max_width=3),
+            A.augmentations.transforms.Downscale(),
+            A.augmentations.transforms.Emboss(),
+            A.augmentations.transforms.FancyPCA(),
+            A.augmentations.transforms.GaussianBlur(blur_limit=(3,5)),
+            A.augmentations.transforms.GaussNoise(),
+            A.augmentations.transforms.ISONoise(),
+            A.augmentations.transforms.ImageCompression(quality_lower=50),
+            A.augmentations.transforms.JpegCompression(quality_lower=50),
+            A.augmentations.transforms.RandomBrightness(),
+            A.augmentations.transforms.RandomFog(),
+            A.augmentations.transforms.RGBShift(),
+        ]
+        
+        return random.sample(possible_transformations, self.numer_transformations)
+
+    def forward(self, image, seed):
+        torch.manual_seed(seed)
+        transform = A.Compose([A.Compose(self.sample_transformations()), ToTensorV2()])
+        second_transform = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((self.image_size,self.image_size)),
+            torchvision.transforms.Normalize(mean=self.mean,std=self.std)
+        ])
+
+        if not isinstance(image, (np.ndarray, np.generic)):
+            image = image.numpy()
+
+        image = torch.cat([transform(image=im)['image'].unsqueeze(0)/255 for im in image], dim=0)
+        image = second_transform(image)
+        return image 
+     
+
+    __call__ = forward
 
 class MeduimTransformations:
 
@@ -41,8 +144,6 @@ class MeduimTransformations:
         random_amount_of_augmentations = random.choice(self.numer_transformations)
         return random.sample(possible_transformations, random_amount_of_augmentations)
 
-    def augment_text(self):
-        pass
 
     def forward(self, image,seed):
         torch.manual_seed(seed)
@@ -56,51 +157,6 @@ class MeduimTransformations:
 
     __call__ = forward
 
-
-class EasyTransformations:
-
-    def __init__(
-        self,
-        image_size=224,
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225],
-        number_transformations = 2,
-        ):
-        
-        self.mean = mean
-        self.std = std
-        self.numer_transformations = list(range(number_transformations))
-        self.image_size=image_size
-
-    def sample_transformations(self):
-                
-        random.seed()
-
-        possible_transformations = [
-            torchvision.transforms.RandomRotation(45),
-            torchvision.transforms.RandomHorizontalFlip(),
-            torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.RandomPerspective(),
-        ]
-
-        random_amount_of_augmentations = random.choice(self.numer_transformations)
-        return random.sample(possible_transformations, random_amount_of_augmentations)
-
-    def augment_text(self):
-        pass
-
-    def forward(self, image, seed):
-        torch.manual_seed(seed)
-        transform = torchvision.transforms.Compose(self.sample_transformations())
-        second_transform = torchvision.transforms.Compose([
-            torchvision.transforms.Resize((self.image_size,self.image_size)),
-            torchvision.transforms.Normalize(mean=self.mean,std=self.std)
-        ])
-
-
-        return second_transform(transform(image))
-
-    __call__ = forward
 
 
 class HardTransformations:
@@ -214,8 +270,6 @@ class HardTransformations:
         random_amount_of_augmentations = random.choice(self.numer_transformations)
         return random.sample(possible_transformations, random_amount_of_augmentations+4)
 
-    def augment_text(self):
-        pass
 
     def forward(self, image, seed):
     

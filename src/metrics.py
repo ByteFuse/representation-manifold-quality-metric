@@ -4,6 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import torch 
 
+from src.data.transforms import LocalTransformations
 from src.data.transforms import EasyTransformations, MeduimTransformations, HardTransformations
 
 
@@ -18,17 +19,27 @@ class ImageCentriodMQM():
         number_of_runs=10,
         supervised=False,
         number_transformations=5,
+        local_changes=True,
         seed=None,
         verbose=False):
         
         assert isinstance(dataloader, torch.utils.data.dataloader.DataLoader), 'dataloader must be of type torch.utils.data.dataloader.DataLoader'
 
-        self.augmentation_distributions = {
-            'easy':EasyTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
-            'meduim': MeduimTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
-            'hard':HardTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations)
-        }
+        if local_changes:
+            self.augmentation_distribution = LocalTransformations(
+                image_size=image_size,
+                mean=mean,
+                std=std,
+                number_transformations=number_transformations
+            )
+        else:
+            self.augmentation_distributions = {
+                'easy':EasyTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
+                'meduim': MeduimTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
+                'hard':HardTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations)
+            }
         self.dataloader = dataloader  
+        self.local_changes = local_changes
         self.number_of_runs = number_of_runs
         self.supervised=supervised
         self.verbose = verbose
@@ -92,7 +103,10 @@ class ImageCentriodMQM():
             model.eval()
             training_state = True
 
-        augmentation_distributions = self.augmentation_distributions[difficulty]
+        if self.local_changes:
+            augmentation_distributions = self.augmentation_distribution
+        else:
+            augmentation_distributions = self.augmentation_distributions[difficulty]
 
         augmented_representations = []
         augmented_labels =[]
@@ -130,9 +144,10 @@ class ImagePointWiseMQM(ImageCentriodMQM):
         supervised=False,
         number_transformations=5,
         seed=None,
+        local_changes=True,
         verbose=False,):
 
-        super().__init__(dataloader, image_size, mean, std, number_of_runs, supervised, number_transformations, seed, verbose)
+        super().__init__(dataloader, image_size, mean, std, number_of_runs, supervised, number_transformations, local_changes, seed, verbose)
 
 
     def calculate_mqm(self, representations, labels):
