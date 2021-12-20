@@ -294,7 +294,6 @@ def main(cfg: DictConfig):
         torchvision.transforms.RandomGrayscale(p=0.2),
         torchvision.transforms.GaussianBlur(cfg.data.blur_kernel),
         torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std),
-        torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std)
     ])
 
     # setup encoder
@@ -364,6 +363,7 @@ def main(cfg: DictConfig):
 
     # set up wandb and trainers
     wandb.login(key=cfg.secrets.wandb_key)
+    wandb.run.log_code('../../../../../')
     wandb_logger = WandbLogger(project='mqm', config=flatten_dict(cfg), )
 
     checkpoint_callback = ModelCheckpoint(

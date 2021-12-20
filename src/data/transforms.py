@@ -1,4 +1,6 @@
 import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True' # required on windows to run albumentations 
+
 import random
 
 import numpy as np
