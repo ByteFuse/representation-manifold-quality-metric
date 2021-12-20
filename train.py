@@ -290,9 +290,8 @@ def main(cfg: DictConfig):
     transform = torchvision.transforms.Compose([
         torchvision.transforms.RandomResizedCrop(size=(cfg.data.size,cfg.data.size)),
         torchvision.transforms.RandomHorizontalFlip(),
-        torchvision.transforms.RandomApply([torchvision.transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)], p=0.8),
-        torchvision.transforms.RandomGrayscale(p=0.2),
-        torchvision.transforms.GaussianBlur(cfg.data.blur_kernel),
+        torchvision.transforms.RandomVerticalFlip(),
+        torchvision.transforms.RandomPerspective(),
         torchvision.transforms.Normalize(cfg.data.mean, cfg.data.std),
     ])
 
