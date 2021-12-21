@@ -15,34 +15,10 @@ from pytorch_lightning.callbacks import RichModelSummary
 import wandb
 
 from src.data.image import ImageSet, QueryReferenceImageSet
+from src.data.utils import load_mnist_dataset
 from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss, CrossEntropyLoss
 from src.models import LeNet
 from src.utils import plot_embeddings_unimodal, flatten_dict
-
-
-def load_mnist_dataset():
-    # getting data directory location
-    data_dir = os.path.join('../../../../../', "data/mnist/")
-
-    mnist_train = torchvision.datasets.MNIST(
-        root=data_dir,
-        train=True,
-        transform=torchvision.transforms.ToTensor(),
-        target_transform=None,
-        download=False
-    )
-
-
-    mnist_test = torchvision.datasets.MNIST(
-        root=data_dir,
-        train=False,
-        transform=torchvision.transforms.ToTensor(),
-        target_transform=None,
-        download=False
-    )
-
-    return mnist_train, mnist_test
-
 
 class TrainerQueryRefrenceSet(pl.LightningDataModule):
  
@@ -64,7 +40,7 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        mnist_train, mnist_test = load_mnist_dataset()
+        mnist_train, mnist_test = load_mnist_dataset('../../../../../')
 
         self.train_data = QueryReferenceImageSet(
             mnist_train, 
@@ -121,7 +97,7 @@ class TrainerSingleImageSet(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        mnist_train, mnist_test = load_mnist_dataset()
+        mnist_train, mnist_test = load_mnist_dataset('../../../../../')
 
         self.train_data = ImageSet(
             mnist_train, 
