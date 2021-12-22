@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -12,7 +14,7 @@ from src.models import LeNet
 from src.data.utils import load_cifar10_dataset, load_mnist_dataset
 
 
-EMBEDDING_DIM=128
+EMBEDDING_DIM=3
 OPTIM='adam'
 
 
@@ -122,25 +124,24 @@ if __name__ == "__main__":
             logits=False,
             number_classes=None
         )
-    encoder_random.load_state_dict(torch.load('./multirun/mnist_encoder_random_dim128.pt')) #ensure random always the same
+    encoder_random.load_state_dict(torch.load(f'./multirun/mnist_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
     encoder_random.eval()
     encoder_random.cuda()
 
     models = [encoder_random, encoder_tripent, encoder_xent,
             encoder_ntxent, encoder_trip_sup, encoder_trip]
-    model_names = [f'random_init', f'tripent_{OPTIM}_{EMBEDDING_DIM}_mnist', f'xent_{OPTIM}_{EMBEDDING_DIM}_mnist',
-                f'ntxent_{OPTIM}_{EMBEDDING_DIM}_mnist', f'trip_sup_{OPTIM}_{EMBEDDING_DIM}_mnist', f'trip_{OPTIM}_{EMBEDDING_DIM}_mnist']
+    model_names = ['random_init', 'tripent_mnist', 'xent_mnist','ntxent_mnist', 'trip_sup_mnist', 'trip_mnist']
 
 
-    
+
     transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
-    dataloader = torch.utils.data.DataLoader(test, batch_size=4096, shuffle=False, num_workers=4, persistent_workers=True, pin_memory=False, drop_last=False)
+    dataloader = torch.utils.data.DataLoader(test, batch_size=4096, shuffle=False, num_workers=8, persistent_workers=True, pin_memory=False, drop_last=False)
 
     df = pd.DataFrame()
 
-    for confidence_run in tqdm(range(0,5), desc='confidence_run'):
-        for model, name in tqdm(zip(models[:1], model_names[:1]), total=len(models), desc='model'):
-            for epsilon in tqdm(epsilons_dist, desc='epsilon'):
+    for confidence_run in tqdm(range(0,3), desc='confidence_run'):
+        for model, name in tqdm(zip(models[:1], model_names[:1]), total=len(models), desc='model', leave=False):
+            for epsilon in tqdm(epsilons_dist, desc='epsilon', leave=False):
                 projected_points = np.zeros(shape=(1, EMBEDDING_DIM))
                 labels = []
 
@@ -166,6 +167,10 @@ if __name__ == "__main__":
 
             df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
             df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
-            df.to_pickle(f'results/mnist/mnist_{OPTIM}_dim{EMBEDDING_DIM}_{name}_white_noise_run{confidence_run}.pickle')
+
+            save_loc = f'results/data=mnist/{OPTIM}/embedding_dim={EMBEDDING_DIM}/'
+            if not os.path.exists(save_loc):
+                os.makedirs(save_loc)
+            df.to_pickle(f'{save_loc}/{name}_white_noise_run{confidence_run}.pickle')
             df = pd.DataFrame()
         
