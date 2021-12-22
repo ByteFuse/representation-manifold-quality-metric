@@ -5,11 +5,49 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from sklearn.decomposition import PCA
 from umap import UMAP
 
+import torch
 import torchvision
 
+
+def return_fgsm_contrastive_attack_images(images, model, loss_fn, val_transform, transform, device='cuda', epsilon=0):
+
+    images = images.to(device)
+    
+    ref_images = transform(images)
+    query_images = val_transform(images)
+    query_images.requires_grad = True
+
+    ref_emb, query_emb = model(ref_images), model(query_images)
+    model.zero_grad()
+    loss = loss_fn(ref_emb, query_emb).to(device)
+    loss.backward()
+    attack_images = torch.clip(images + epsilon*query_images.grad.data.sign(), 0, 1)
+    
+    return attack_images
+
+def return_fgsm_supervised_attack_images(images, labels, model, loss_fn, final_transform, require_logits=False, device='cuda', epsilon=0):
+    
+    images_return = images.clone().to(device)
+    
+    images = final_transform(images.to(device))
+    labels = labels.to(device)
+    images.requires_grad = True
+
+    if require_logits:
+        embeddings, logits = model(images)
+        model.zero_grad()
+        loss = loss_fn(embeddings, logits, labels).to(device)
+    else:
+        embeddings = model(images)
+        model.zero_grad()
+        loss = loss_fn(embeddings, labels).to(device)
+
+    loss.backward()
+    attack_images = torch.clip(images_return + epsilon*images.grad.data.sign(), 0, 1)
+    
+    return attack_images
 
 def plot_embeddings_unimodal(plot_data, epoch, return_fig=False):
     embeddings = []
