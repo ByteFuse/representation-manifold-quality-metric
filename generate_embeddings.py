@@ -122,6 +122,7 @@ if __name__ == "__main__":
             logits=False,
             number_classes=None
         )
+    encoder_random.load_state_dict(torch.load('./multirun/mnist_encoder_random_dim128.pt')) #ensure random always the same
     encoder_random.eval()
     encoder_random.cuda()
 
@@ -131,7 +132,7 @@ if __name__ == "__main__":
                 f'ntxent_{OPTIM}_{EMBEDDING_DIM}_mnist', f'trip_sup_{OPTIM}_{EMBEDDING_DIM}_mnist', f'trip_{OPTIM}_{EMBEDDING_DIM}_mnist']
 
 
-
+    
     transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
     dataloader = torch.utils.data.DataLoader(test, batch_size=4096, shuffle=False, num_workers=4, persistent_workers=True, pin_memory=False, drop_last=False)
 
