@@ -7,19 +7,17 @@ from tqdm import tqdm
 import torch
 import torchvision
 
-
-import torch
-import torchvision
-
 import pytorch_lightning as pl
 
-from src.models import CifarResNet18
+from src.models import LeNet
 from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss, CrossEntropyLoss
-from src.data.utils import load_cifar10_dataset
+from src.data.utils import load_mnist_dataset
 from src.utils import return_fgsm_contrastive_attack_images, return_fgsm_supervised_attack_images
 
+
 EMBEDDING_DIM=128
-OPTIM='adam'
+OPTIM='sgd'
+
 
 class QueryRefrenceImageEncoder(pl.LightningModule):
     def __init__(self, 
@@ -35,7 +33,7 @@ class QueryRefrenceImageEncoder(pl.LightningModule):
         self.optim_cfg = optim_cfg
         self.loss_func = loss_fn
         self.logits = logits
-        self.val_transform = torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768])
+        self.val_transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
 
     def configure_optimizers(self):        
         pass
@@ -52,17 +50,17 @@ class QueryRefrenceImageEncoder(pl.LightningModule):
 
 if __name__ == "__main__":
 
-    train, test = load_cifar10_dataset('./')
+    train, test = load_mnist_dataset('./')
 
 
-    encoder = CifarResNet18(
+    encoder = LeNet(
             embedding_dim=EMBEDDING_DIM, 
-            hidden_dim=1024,
+            dropout=0,
             logits=True,
             number_classes=10
         )
     model = QueryRefrenceImageEncoder(encoder=encoder,loss_fn=None,optim_cfg=None,)
-    model = model.load_from_checkpoint(f'./multirun/data=cifar10/triplet-entropy/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
+    model = model.load_from_checkpoint(f'./multirun/data=mnist/triplet-entropy/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
     model.eval()
     encoder_tripent = model.encoder
     encoder_tripent.eval()
@@ -71,14 +69,14 @@ if __name__ == "__main__":
 
 
 
-    encoder = CifarResNet18(
+    encoder = LeNet(
             embedding_dim=EMBEDDING_DIM, 
-            hidden_dim=1024,
+            dropout=0,
             logits=True,
             number_classes=10
         )
     model = QueryRefrenceImageEncoder(encoder=encoder,loss_fn=None,optim_cfg=None,)
-    model = model.load_from_checkpoint(f'./multirun/data=cifar10/cross-entropy/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
+    model = model.load_from_checkpoint(f'./multirun/data=mnist/cross-entropy/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
     model.eval()
     encoder_xent = model.encoder
     encoder_xent.eval()
@@ -87,15 +85,15 @@ if __name__ == "__main__":
 
 
 
-    encoder = CifarResNet18(
+    encoder = LeNet(
             embedding_dim=EMBEDDING_DIM, 
-            hidden_dim=1024,
+            dropout=0,
             logits=False,
             number_classes=None
         )
 
     model = QueryRefrenceImageEncoder(encoder=encoder,loss_fn=None,optim_cfg=None,)
-    model = model.load_from_checkpoint(f'./multirun/data=cifar10/nt-xent/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
+    model = model.load_from_checkpoint(f'./multirun/data=mnist/nt-xent/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
     model.eval()
     encoder_ntxent = model.encoder
     encoder_ntxent.eval()
@@ -103,7 +101,7 @@ if __name__ == "__main__":
     encoder_ntxent.logits=False
 
     model = QueryRefrenceImageEncoder(encoder=encoder,loss_fn=None,optim_cfg=None,)
-    model = model.load_from_checkpoint(f'./multirun/data=cifar10/triplet-supervised/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
+    model = model.load_from_checkpoint(f'./multirun/data=mnist/triplet-supervised/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
     model.eval()
     encoder_trip_sup = model.encoder
     encoder_trip_sup.eval()
@@ -111,7 +109,7 @@ if __name__ == "__main__":
     encoder_trip_sup.logits=False
 
     model = QueryRefrenceImageEncoder(encoder=encoder,loss_fn=None,optim_cfg=None,)
-    model = model.load_from_checkpoint(f'./multirun/data=cifar10/triplet/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
+    model = model.load_from_checkpoint(f'./multirun/data=mnist/triplet/{OPTIM}/encoder.embedding_dim={EMBEDDING_DIM}/checkpoints/last.ckpt')
     model.eval()
     encoder_trip = model.encoder
     encoder_trip.eval()
@@ -121,39 +119,33 @@ if __name__ == "__main__":
 
     epsilons_dist = np.linspace(start=0, stop=1.0, num=100)
 
-    encoder_random = CifarResNet18(
+    encoder_random = LeNet(
             embedding_dim=EMBEDDING_DIM, 
-            hidden_dim=1024,
+            dropout=0,
             logits=False,
             number_classes=None
         )
-    encoder_random.load_state_dict(torch.load(f'./multirun/cifar_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
+    encoder_random.load_state_dict(torch.load(f'./multirun/mnist_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
     encoder_random.eval()
     encoder_random.cuda()
 
-    models = [encoder_random, encoder_tripent, encoder_xent,
-            encoder_ntxent, encoder_trip_sup, encoder_trip]
-    model_names = ['random_init', 'tripent_cifar10', 'xent_cifar10','ntxent_cifar10', 'trip_sup_cifar10', 'trip_cifar10']
+    models = [encoder_random, encoder_tripent, encoder_xent, encoder_ntxent, encoder_trip_sup, encoder_trip]
+    model_names = ['random_init', 'tripent_mnist', 'xent_mnist','ntxent_mnist', 'trip_sup_mnist', 'trip_mnist']
     losses = {
         'random_init': NtXentLoss(),
-        'tripent_cifar10': TripletEntropyLoss(),
-        'xent_cifar10': CrossEntropyLoss(),
-        'ntxent_cifar10': NtXentLoss(),
-        'trip_sup_cifar10': TripletLossSupervised(),
-        'trip_cifar10': TripletLoss()
+        'tripent_mnist': TripletEntropyLoss(),
+        'xent_mnist': CrossEntropyLoss(),
+        'ntxent_mnist': NtXentLoss(),
+        'trip_sup_mnist': TripletLossSupervised(),
+        'trip_mnist': TripletLoss()
     }
 
-    
     aug_transform = torchvision.transforms.Compose([
-        torchvision.transforms.RandomResizedCrop(size=(32,32)),
-        torchvision.transforms.RandomHorizontalFlip(p=0.3),
-        torchvision.transforms.RandomVerticalFlip(p=0.3),
-        torchvision.transforms.RandomPerspective(distortion_scale=0.2),
-        torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768]),
+        torchvision.transforms.RandomRotation(15),
+        torchvision.transforms.Normalize((0.1307,), (0.3081,))
     ])
 
-    transform = torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768])
-
+    transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
     dataloader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False, num_workers=8, persistent_workers=True, pin_memory=False, drop_last=False)
 
     df = pd.DataFrame()
@@ -168,7 +160,7 @@ if __name__ == "__main__":
                     images, labs = batch
                     labels.extend([int(l) for l in labs])
 
-                    if name in ['random_init','ntxent_cifar10', 'trip_cifar10']:
+                    if name in ['random_init','ntxent_mnist', 'trip_mnist']:
                         images = transform(
                             return_fgsm_contrastive_attack_images(
                                     images=images,
@@ -179,7 +171,7 @@ if __name__ == "__main__":
                                     epsilon=epsilon
                             )
                         )
-                    elif name in ['tripent_cifar10', 'xent_cifar10']:
+                    elif name in ['tripent_mnist', 'xent_mnist']:
                         model.logits = True
                         images = transform(
                             return_fgsm_supervised_attack_images(
@@ -226,7 +218,7 @@ if __name__ == "__main__":
             df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
             df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
 
-            save_loc = f'results/data=cifar10/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
+            save_loc = f'results/data=mnist/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
             if not os.path.exists(save_loc):
                 os.makedirs(save_loc)
             df.to_pickle(f'{save_loc}/{name}_adverserial_run{confidence_run}.pickle')
