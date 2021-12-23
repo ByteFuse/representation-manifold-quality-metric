@@ -12,11 +12,12 @@ import pytorch_lightning as pl
 from src.models import LeNet
 from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, NtXentLoss, CrossEntropyLoss
 from src.data.utils import load_mnist_dataset
-from src.utils import return_fgsm_contrastive_attack_images, return_fgsm_supervised_attack_images
+from src.attacks import return_fgsm_contrastive_attack_images, return_fgsm_supervised_attack_images
 
 
-EMBEDDING_DIM=128
+EMBEDDING_DIM=2
 OPTIM='sgd'
+PGD_ITTERATION=50 #if 1 it is FGSM then alter episilon
 
 
 class QueryRefrenceImageEncoder(pl.LightningModule):
@@ -116,8 +117,7 @@ if __name__ == "__main__":
     encoder_trip.cuda()
     encoder_trip.logits=False
 
-
-    epsilons_dist = np.linspace(start=0, stop=1.0, num=100)
+    epsilons_dist = np.linspace(start=0, stop=0.2, num=100)
 
     encoder_random = LeNet(
             embedding_dim=EMBEDDING_DIM, 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             logits=False,
             number_classes=None
         )
-    encoder_random.load_state_dict(torch.load(f'./multirun/mnist_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
+    # encoder_random.load_state_dict(torch.load(f'./multirun/mnist_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
     encoder_random.eval()
     encoder_random.cuda()
 
@@ -146,81 +146,77 @@ if __name__ == "__main__":
     ])
 
     transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
-    dataloader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False, num_workers=8, persistent_workers=True, pin_memory=False, drop_last=False)
+    dataloader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False, num_workers=2, persistent_workers=True, pin_memory=False, drop_last=False)
 
     df = pd.DataFrame()
 
-    for confidence_run in tqdm(range(0,3), desc='confidence_run'):
-        for model, name in tqdm(zip(models, model_names), total=len(models), desc='model', leave=False):
-            for epsilon in tqdm(epsilons_dist, desc='epsilon', leave=False):
-                projected_points = np.zeros(shape=(1, EMBEDDING_DIM))
-                labels = []
+    for model, name in tqdm(zip(models, model_names), total=len(models), desc='model', leave=False):
+        for iteration in tqdm(range(PGD_ITTERATION), desc='pgd iteration', leave=False):
+            projected_points = np.zeros(shape=(1, EMBEDDING_DIM))
+            labels = []
 
-                for batch in tqdm(dataloader, desc='sample', leave=False):
-                    images, labs = batch
-                    labels.extend([int(l) for l in labs])
+            for batch in tqdm(dataloader, desc='sample', leave=False):
+                images, labs = batch
+                labels.extend([int(l) for l in labs])
 
-                    if name in ['random_init','ntxent_mnist', 'trip_mnist']:
-                        images = transform(
-                            return_fgsm_contrastive_attack_images(
-                                    images=images,
-                                    model=model,
-                                    loss_fn=losses[name],
-                                    val_transform=transform,
-                                    transform=aug_transform,
-                                    epsilon=epsilon
-                            )
-                        )
-                    elif name in ['tripent_mnist', 'xent_mnist']:
-                        model.logits = True
-                        images = transform(
-                            return_fgsm_supervised_attack_images(
-                                    images=images,
-                                    model=model,
-                                    labels=labs,
-                                    loss_fn=losses[name],
-                                    final_transform=aug_transform,
-                                    require_logits=True,
-                                    epsilon=epsilon
-                            )
-                        )
-                        model.logits = False
-                    else:
-                        images = transform(
-                            return_fgsm_supervised_attack_images(
-                                    images=images,
-                                    model=model,
-                                    labels=labs,
-                                    loss_fn=losses[name],
-                                    final_transform=aug_transform,
-                                    require_logits=False,
-                                    epsilon=epsilon
-                            )
-                        )
-                        model.logits = False
+                if name in ['random_init','ntxent_mnist', 'trip_mnist']:
+                    images = return_fgsm_contrastive_attack_images(
+                        images=images,
+                        model=model,
+                        loss_fn=losses[name],
+                        val_transform=transform,
+                        transform=aug_transform,
+                        iterations=iteration,
+                        epsilon=2/255 
+                    )
+                elif name in ['tripent_mnist', 'xent_mnist']:
+                    model.logits = True
+                    images = return_fgsm_supervised_attack_images(
+                        images=images,
+                        model=model,
+                        labels=labs,
+                        loss_fn=losses[name],
+                        final_transform=aug_transform,
+                        require_logits=True,
+                        iterations=iteration,
+                        epsilon=2/255 
+                    )
+                    model.logits = False
+                else:
+                    images = return_fgsm_supervised_attack_images(
+                        images=images,
+                        model=model,
+                        labels=labs,
+                        loss_fn=losses[name],
+                        final_transform=aug_transform,
+                        require_logits=False,
+                        iterations=iteration,
+                        epsilon=2/255 
+                    )
+                    model.logits = False
 
-                    with torch.no_grad():
-                        
-                        reps = model(images.cuda()).cpu().numpy()
-                    projected_points = np.concatenate((projected_points, reps))
+                with torch.no_grad():
+                    
+                    reps = model(images.cuda()).cpu().numpy()
+                projected_points = np.concatenate((projected_points, reps))
 
-                projected_points = projected_points[1:]
-                _ = pd.DataFrame(projected_points)
-                _['epsilon'] = epsilon
-                _['model'] = name
-                _['image_index'] = list(range(len(labels)))
-                _['label'] = labels
-                df = pd.concat([df, _])
+            projected_points = projected_points[1:]
+            _ = pd.DataFrame(projected_points)
+            _['pgd_iterations'] = iteration
+            _['model'] = name
+            _['image_index'] = list(range(len(labels)))
+            _['label'] = labels
+            df = pd.concat([df, _])
 
-            fcols = df.select_dtypes('float').columns
-            icols = df.select_dtypes('integer').columns
+        fcols = df.select_dtypes('float').columns
+        icols = df.select_dtypes('integer').columns
 
-            df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
-            df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
+        df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
+        df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
 
-            save_loc = f'results/data=mnist/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
-            if not os.path.exists(save_loc):
-                os.makedirs(save_loc)
-            df.to_pickle(f'{save_loc}/{name}_adverserial_run{confidence_run}.pickle')
-            df = pd.DataFrame()
+        save_loc = f'results/data=mnist/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
+        if not os.path.exists(save_loc):
+            os.makedirs(save_loc)
+        df.to_pickle(f'{save_loc}/{name}_adverserial.pickle')
+        df = pd.DataFrame()
         
