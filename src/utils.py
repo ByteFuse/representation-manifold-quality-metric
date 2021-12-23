@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from sklearn.decomposition import PCA
 from umap import UMAP
 
 import torchvision

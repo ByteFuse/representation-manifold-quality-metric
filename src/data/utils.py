@@ -80,3 +80,26 @@ def load_cifar10_dataset(dir):
     )
 
     return cifar10_train, cifar10_test
+
+def load_mnist_dataset(dir):
+    # getting data directory location
+    data_dir = os.path.join(dir, "data/mnist/")
+
+    mnist_train = torchvision.datasets.MNIST(
+        root=data_dir,
+        train=True,
+        transform=torchvision.transforms.ToTensor(),
+        target_transform=None,
+        download=False
+    )
+
+
+    mnist_test = torchvision.datasets.MNIST(
+        root=data_dir,
+        train=False,
+        transform=torchvision.transforms.ToTensor(),
+        target_transform=None,
+        download=False
+    )
+
+    return mnist_train, mnist_test

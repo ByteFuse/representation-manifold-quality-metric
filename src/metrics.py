@@ -4,6 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import torch 
 
+from src.data.transforms import LocalTransformations
 from src.data.transforms import EasyTransformations, MeduimTransformations, HardTransformations
 
 
@@ -17,26 +18,38 @@ class ImageCentriodMQM():
         std=[0.229, 0.224, 0.225],
         number_of_runs=10,
         supervised=False,
+        supervised_calculation=False,
         number_transformations=5,
+        local_changes=True,
         seed=None,
         verbose=False):
         
         assert isinstance(dataloader, torch.utils.data.dataloader.DataLoader), 'dataloader must be of type torch.utils.data.dataloader.DataLoader'
 
-        self.augmentation_distributions = {
-            'easy':EasyTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
-            'meduim': MeduimTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
-            'hard':HardTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations)
-        }
+        if local_changes:
+            self.augmentation_distribution = LocalTransformations(
+                image_size=image_size,
+                mean=mean,
+                std=std,
+                number_transformations=number_transformations
+            )
+        else:
+            self.augmentation_distributions = {
+                'easy':EasyTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
+                'meduim': MeduimTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
+                'hard':HardTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations)
+            }
         self.dataloader = dataloader  
+        self.local_changes = local_changes
         self.number_of_runs = number_of_runs
         self.supervised=supervised
+        self.supervised_calculation = supervised_calculation
         self.verbose = verbose
         self.seed = seed
 
     def calculate_mqm(self, representations, labels):
         n_embeddings = representations.size(-1)
-        if self.supervised:
+        if self.supervised_calculation:
             unique_labels = torch.unique(torch.tensor(labels), sorted=True, return_inverse=False)
             
             centroid_mqm = 0
@@ -92,7 +105,10 @@ class ImageCentriodMQM():
             model.eval()
             training_state = True
 
-        augmentation_distributions = self.augmentation_distributions[difficulty]
+        if self.local_changes:
+            augmentation_distributions = self.augmentation_distribution
+        else:
+            augmentation_distributions = self.augmentation_distributions[difficulty]
 
         augmented_representations = []
         augmented_labels =[]
@@ -107,7 +123,7 @@ class ImageCentriodMQM():
                 representations = self.generate_representations(model, augmentation_distributions, n).unsqueeze(0)
             augmented_representations.extend(representations.detach().numpy())
 
-        augmented_representations = torch.tensor(augmented_representations)
+        augmented_representations = torch.tensor(np.array(augmented_representations))
         centriod_mqm = self.calculate_mqm(augmented_representations, augmented_labels)
 
         if training_state:
@@ -128,11 +144,13 @@ class ImagePointWiseMQM(ImageCentriodMQM):
         std=[0.229, 0.224, 0.225],
         number_of_runs=10,
         supervised=False,
+        supervised_calculation=False,
         number_transformations=5,
         seed=None,
+        local_changes=True,
         verbose=False,):
 
-        super().__init__(dataloader, image_size, mean, std, number_of_runs, supervised, number_transformations, seed, verbose)
+        super().__init__(dataloader, image_size, mean, std, number_of_runs, supervised, supervised_calculation, number_transformations, local_changes, seed, verbose)
 
 
     def calculate_mqm(self, representations, labels):
