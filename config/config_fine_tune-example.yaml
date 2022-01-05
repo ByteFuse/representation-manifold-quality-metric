@@ -1,0 +1,15 @@
+original_data: 'cifar10'
+original_method: 'nt-xent'
+new_data: 'caltech'
+method: 'fine_tune'
+original_optim: 'adam'
+
+n_classes: 101
+embedding_dim: 128
+batch_size: 32
+need_logits: True
+
+secrets:
+  wandb_key: '*'
+
+checkpoint_dir: finetuning/old_data=${original_data}/model=${original_method}/original_optim=${original_optim}/new_data=${new_data}/method=${method}/adam/encoder.embedding_dim=${embedding_dim}/batch_size=${batch_size}

@@ -14,7 +14,7 @@ from src.models import LeNet
 from src.data.utils import load_cifar10_dataset, load_mnist_dataset
 
 
-EMBEDDING_DIM=512
+EMBEDDING_DIM=256
 OPTIM='sgd'
 
 
@@ -124,7 +124,7 @@ if __name__ == "__main__":
             logits=False,
             number_classes=None
         )
-    encoder_random.load_state_dict(torch.load(f'./multirun/mnist_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
+    # encoder_random.load_state_dict(torch.load(f'./multirun/mnist_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
     encoder_random.eval()
     encoder_random.cuda()
 
@@ -168,7 +168,7 @@ if __name__ == "__main__":
             df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
             df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
 
-            save_loc = f'results/data=mnist/{OPTIM}/embedding_dim={EMBEDDING_DIM}/white_noise_attacks'
+            save_loc = f'results/data=mnist/{OPTIM}/embedding_dim={EMBEDDING_DIM}'
             if not os.path.exists(save_loc):
                 os.makedirs(save_loc)
             df.to_pickle(f'{save_loc}/{name}_white_noise_run{confidence_run}.pickle')

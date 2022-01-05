@@ -15,9 +15,9 @@ from src.data.utils import load_mnist_dataset
 from src.attacks import return_fgsm_contrastive_attack_images, return_fgsm_supervised_attack_images
 
 
-EMBEDDING_DIM=2
+EMBEDDING_DIM=256
 OPTIM='sgd'
-PGD_ITTERATION=50 #if 1 it is FGSM then alter episilon
+PGD_ITTERATION=30 #if 1 it is FGSM then alter episilon
 
 
 class QueryRefrenceImageEncoder(pl.LightningModule):

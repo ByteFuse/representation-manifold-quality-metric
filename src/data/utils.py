@@ -7,16 +7,34 @@ import torchvision
 
 from src.data.image import GenericImageSet
 
+def load_caltect_dataset(dir):
+    data_dir = os.path.join(dir, "data/101_ObjectCategories/")
+    
+    caltech_dataset = torchvision.datasets.ImageFolder(
+        root=data_dir,
+        transform= torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((32, 32))
+        ])
+    )
+
+    caltech_train, caltech_test = torch.utils.data.random_split(
+        caltech_dataset,
+        [int(len(caltech_dataset)*0.8), len(caltech_dataset)-int(len(caltech_dataset)*0.8)],
+        generator=torch.Generator().manual_seed(42)
+    )
+    return caltech_train, caltech_test
+
 
 def load_cars_dataset(dir):
     data_dir = os.path.join(dir, "data/cars/")
 
-    data = pd.read_csv(os.path.join(data_dir,"cars_train.csv"))
+    data = pd.read_csv(os.path.join(data_dir,"meta_data.csv"))
     train_data = data[data['split'] == 'train']
     test_data = data[data['split'] == 'test']
 
-    cars_train = GenericImageSet(train_data, data_dir)
-    cars_test = GenericImageSet(test_data, data_dir)
+    cars_train = GenericImageSet(train_data, data_dir, size=32, min_channels=3)
+    cars_test = GenericImageSet(test_data, data_dir, size=32, min_channels=3)
 
     return cars_train, cars_test
 
@@ -32,8 +50,8 @@ def load_cub_dataset(dir):
     train_data = data[data['split'] == 1]
     test_data = data[data['split'] == 0]
 
-    cub_train = GenericImageSet(train_data, os.path.join(data_dir, 'images'))
-    cub_test = GenericImageSet(test_data, os.path.join(data_dir, 'images'))
+    cub_train = GenericImageSet(train_data, os.path.join(data_dir, 'images'), size=32, min_channels=3)
+    cub_test = GenericImageSet(test_data, os.path.join(data_dir, 'images'), size=32, min_channels=3)
 
     return cub_train, cub_test
 

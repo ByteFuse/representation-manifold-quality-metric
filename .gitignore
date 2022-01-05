@@ -130,4 +130,5 @@ dmypy.json
 
 # hydra
 config.yaml
+config_fine_tune.yaml
 output/

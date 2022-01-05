@@ -20,7 +20,7 @@ from src.attacks import return_fgsm_contrastive_attack_images, return_fgsm_super
 
 EMBEDDING_DIM=128
 OPTIM='adam'
-PGD_ITTERATION=1
+PGD_ITTERATION=30
 
 class QueryRefrenceImageEncoder(pl.LightningModule):
     def __init__(self, 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
 
     transform = torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768])
 
-    dataloader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False, num_workers=8, persistent_workers=True, pin_memory=False, drop_last=False)
+    dataloader = torch.utils.data.DataLoader(test, batch_size=256, shuffle=False, num_workers=2, persistent_workers=True, pin_memory=False, drop_last=False)
 
     df = pd.DataFrame()
 
