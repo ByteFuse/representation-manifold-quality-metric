@@ -1,4 +1,4 @@
-from omegaconf import DictConfig
+import os
 
 import torch
 import wandb
@@ -56,6 +56,13 @@ class FineTuneModels(pl.LightningModule):
         
         self.encoder = encoder
         self.loss_func = loss_fn
+        self.train_transform = torchvision.transforms.Compose([
+            torchvision.transforms.RandomResizedCrop(size=(32,32)),
+            torchvision.transforms.RandomHorizontalFlip(p=0.3),
+            torchvision.transforms.RandomVerticalFlip(p=0.3),
+            torchvision.transforms.RandomPerspective(distortion_scale=0.2),
+            torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768]),
+        ])
         self.transform = torchvision.transforms.Compose([
             torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768])
         ])
@@ -80,13 +87,13 @@ class FineTuneModels(pl.LightningModule):
 
     def training_step(self, train_batch, _):
         images, labels = train_batch
-        images = self.transform(images)
+        images = self.train_transform(images)
         logits = self(images)
         loss = self.loss_func(logits, labels)
         self.train_accuracy(logits.softmax(dim=-1), labels)
         
-        self.log('train_acc_step', self.accuracy)
-        self.log(f'train/loss', loss, on_epoch=True, on_step=True)
+        self.log('train_acc', self.train_accuracy, on_epoch=True, on_step=True)
+        self.log(f'train_loss_finetune', loss, on_epoch=True, on_step=True)
         return loss
 
     def validation_step(self, val_batch, _):
@@ -96,8 +103,8 @@ class FineTuneModels(pl.LightningModule):
         loss = self.loss_func(logits, labels)
         self.val_accuracy(logits.softmax(dim=-1), labels)
         
-        self.log('val_acc', self.accuracy, on_epoch=True, on_step=False)
-        self.log(f'val/loss', loss, on_epoch=True, on_step=False)
+        self.log('val_acc', self.val_accuracy, on_epoch=True, on_step=False)
+        self.log(f'val_loss_finetune', loss, on_epoch=True, on_step=False)
         return loss
     
 
@@ -113,6 +120,14 @@ class LinearImageClassifier(pl.LightningModule):
  
         self.encoder = encoder
         self.loss_func = loss_fn
+        self.train_transform = torchvision.transforms.Compose([
+            torchvision.transforms.RandomResizedCrop(size=(32,32)),
+            torchvision.transforms.RandomHorizontalFlip(p=0.3),
+            torchvision.transforms.RandomVerticalFlip(p=0.3),
+            torchvision.transforms.RandomPerspective(distortion_scale=0.2),
+            torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768]),
+        ])
+
         self.transform = torchvision.transforms.Compose([
             torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768])
         ])
@@ -139,13 +154,13 @@ class LinearImageClassifier(pl.LightningModule):
 
     def training_step(self, train_batch, _):
         images, labels = train_batch
-        images = self.transform(images)
+        images = self.train_transform(images)
         logits = self(images)
         loss = self.loss_func(logits, labels)
         self.train_accuracy(logits.softmax(dim=-1), labels)
         
-        self.log('train_acc', self.accuracy, on_epoch=True, on_step=True)
-        self.log(f'train_loss', loss, on_epoch=True, on_step=True)
+        self.log('train_acc', self.train_accuracy, on_epoch=True, on_step=True)
+        self.log(f'train_loss_finetune', loss, on_epoch=True, on_step=True)
         return loss
 
     def validation_step(self, val_batch, _):
@@ -155,8 +170,8 @@ class LinearImageClassifier(pl.LightningModule):
         loss = self.loss_func(logits, labels)
         self.val_accuracy(logits.softmax(dim=-1), labels)
         
-        self.log('val_acc', self.accuracy, on_epoch=True, on_step=False)
-        self.log(f'val_loss', loss, on_epoch=True, on_step=False)
+        self.log('val_acc', self.val_accuracy, on_epoch=True, on_step=False)
+        self.log(f'val_loss_finetune', loss, on_epoch=True, on_step=False)
         return loss
 
 
@@ -179,21 +194,21 @@ def main():
 
     train_dataloader = torch.utils.data.DataLoader(
         train,
-        batch_size=128,
+        batch_size=cfg['batch_size'],
         shuffle=True,
-        num_workers=8,
-        persistent_workers=False,
-        pin_memory=False,
+        num_workers=4,
+        persistent_workers=True,
+        pin_memory=True,
         drop_last=False
     )
 
     test_dataloader = torch.utils.data.DataLoader(
         test,
-        batch_size=128,
+        batch_size=cfg['batch_size'],
         shuffle=False,
-        num_workers=8,
-        persistent_workers=False,
-        pin_memory=False,
+        num_workers=4,
+        persistent_workers=True,
+        pin_memory=True,
         drop_last=False
     )
 
@@ -213,8 +228,10 @@ def main():
         )
 
     model = GenericPlaceHolder(encoder=cnn_encoder)
-    encoder_checkpoint = f"./multirun/data={cfg['original_data']}/{cfg['original_method']}/{cfg['original_optim']}/encoder.embedding_dim={cfg['embedding_dim']}/checkpoints/last.ckpt"
-    model = model.load_from_checkpoint(encoder_checkpoint)
+
+    if cfg['original_method']!='random':
+        encoder_checkpoint = f"./multirun/data={cfg['original_data']}/{cfg['original_method']}/{cfg['original_optim']}/encoder.embedding_dim={cfg['embedding_dim']}/checkpoints/last.ckpt"
+        model = model.load_from_checkpoint(encoder_checkpoint)
     encoder = model.encoder
     encoder.logits=False
 
@@ -223,14 +240,14 @@ def main():
         model = FineTuneModels(
             encoder=encoder,
             embedding_size=cfg['embedding_dim'],
-            n_classes=cfg['n_classes'],
+            n_classes=cfg['n_classes']+1,
             loss_fn=nn.CrossEntropyLoss()
         )
     elif cfg['method']=='linear':
         model = LinearImageClassifier(
             encoder=encoder,
             embedding_size=cfg['embedding_dim'],
-            n_classes=cfg['n_classes'],
+            n_classes=cfg['n_classes']+1,
             loss_fn=nn.CrossEntropyLoss()
         )
 
@@ -242,10 +259,15 @@ def main():
     code.add_file('./fine_tune_encoders.py')
     wandb.run.use_artifact(code)
     wandb_logger = WandbLogger(project='mqm', config=flatten_dict(cfg))
+    
+
+    checkpoint_dir = f'finetuning/old_data={cfg["original_data"]}/model={cfg["original_method"]}/original_optim={cfg["original_optim"]}/new_data={cfg["new_data"]}/method={cfg["method"]}/adam/encoder.embedding_dim={cfg["embedding_dim"]}/batch_size={cfg["batch_size"]}'
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
 
     checkpoint_callback = ModelCheckpoint(
-        dirpath=cfg['checkpoint_dir'], 
-        filename='{epoch}-{valid_loss:.2f}', 
+        dirpath=checkpoint_dir, 
+        filename='{epoch}-{val_acc:.2f}', 
         save_top_k=2, 
         monitor='val_acc',
         save_weights_only=False,
@@ -255,7 +277,7 @@ def main():
     trainer = pl.Trainer( 
         logger=wandb_logger,    
         gpus=None if not torch.cuda.is_available() else -1,
-        max_epochs=50,           
+        max_epochs=100,           
         deterministic=True, 
         precision=32 if not torch.cuda.is_available() else 16,   
         profiler="simple",
