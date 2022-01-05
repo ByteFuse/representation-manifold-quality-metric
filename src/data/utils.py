@@ -117,7 +117,6 @@ def load_mnist_dataset(dir):
         download=False
     )
 
-
     mnist_test = torchvision.datasets.MNIST(
         root=data_dir,
         train=False,
@@ -127,3 +126,26 @@ def load_mnist_dataset(dir):
     )
 
     return mnist_train, mnist_test
+
+
+def load_fashion_dataset(dir):
+    # getting data directory location
+    data_dir = os.path.join(dir, "data/fashion/")
+
+    fashion_train = torchvision.datasets.FashionMNIST(
+        root=data_dir,
+        train=True,
+        transform=torchvision.transforms.ToTensor(),
+        target_transform=None,
+        download=False
+    )
+
+    fashion_test = torchvision.datasets.FashionMNIST(
+        root=data_dir,
+        train=False,
+        transform=torchvision.transforms.ToTensor(),
+        target_transform=None,
+        download=False
+    )
+
+    return fashion_train, fashion_test

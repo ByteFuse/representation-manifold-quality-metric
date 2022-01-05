@@ -24,6 +24,25 @@ def download_mnist(save_location):
     )
 
 
+def download_fashion_mnist(save_location):
+    torchvision.datasets.FashionMNIST(
+        root=save_location,
+        train=True,
+        transform=None,
+        target_transform = None,
+        download=True
+    )
+
+    torchvision.datasets.FashionMNIST(
+        root=save_location,
+        train=False,
+        transform=None,
+        target_transform = None,
+        download=True
+    )
+
+
+
 def download_cifar10(save_location):
     torchvision.datasets.CIFAR10(
         root=save_location,
@@ -140,7 +159,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='all', help='What dataset should be downloaded. Options are all, mnist, cifar10, cifar100, cars, cub.')
     args = parser.parse_args()
 
-    assert args.dataset.lower() in ["all", "mnist", "cifar10", "cifar100", "cars", "cub"], "Only allowed datasets are all, mnist, cifar10, cifar100, cars, cub"
+    assert args.dataset.lower() in ["all", "mnist", "cifar10", "cifar100", "cars", "cub", "fashion"], "Only allowed datasets are all, mnist, cifar10, cifar100, cars, cub"
 
     # getting data directory location
     data_dir = os.path.dirname(__file__)
@@ -150,6 +169,7 @@ if __name__ == '__main__':
     cifar100_loc = os.path.join(data_dir, 'cifar100')
     cars_loc = os.path.join(data_dir, 'cars')
     cub_loc = os.path.join(data_dir, 'cub')
+    fashion_loc = os.path.join(data_dir, 'fashion')
 
     if args.dataset.lower() == "all":
         print('Downloading MNIST data')
@@ -162,6 +182,8 @@ if __name__ == '__main__':
         download_cars(save_location=cars_loc)
         print('Downloading CUB100 data')
         download_cub(save_location=cub_loc)
+        print('Downloading Fashion-MNIST data')
+        download_fashion_mnist(save_location=fashion_loc)
     elif args.dataset.lower() == 'mnist':
         print('Downloading MNIST data')
         download_mnist(save_location=mnsit_loc)
@@ -176,8 +198,10 @@ if __name__ == '__main__':
         download_cars(save_location=cars_loc)    
     elif args.dataset.lower() == 'cub':
         print('Downloading CUB100 data')
-        download_cub(save_location=cub_loc)   
-
+        download_cub(save_location=cub_loc)
+    elif args.dataset.lower() == 'fashion':
+        print('Downloading Fashion-MNIST data')
+        download_fashion_mnist(save_location=fashion_loc)    
 
         
 
