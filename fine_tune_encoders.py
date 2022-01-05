@@ -20,7 +20,9 @@ from src.data.utils import (
     load_cifar100_dataset,
     load_cifar10_dataset,
     load_cars_dataset,
-    load_caltect_dataset
+    load_caltect_dataset,
+    load_fashion_dataset,
+    load_mnist_dataset
 )
 from src.models import CifarResNet18, LeNet
 from src.utils import flatten_dict
@@ -43,95 +45,44 @@ class GenericPlaceHolder(pl.LightningModule):
     def validation_step(self, val_batch, batch_idx):
         pass
 
-
-class FineTuneModels(pl.LightningModule):
-    def __init__(self, 
-                 encoder,
-                 embedding_size,
-                 n_classes,
-                 loss_fn):
-        super().__init__()
-
-        self.save_hyperparameters()
-        
-        self.encoder = encoder
-        self.loss_func = loss_fn
-        self.train_transform = torchvision.transforms.Compose([
-            torchvision.transforms.RandomResizedCrop(size=(32,32)),
-            torchvision.transforms.RandomHorizontalFlip(p=0.3),
-            torchvision.transforms.RandomVerticalFlip(p=0.3),
-            torchvision.transforms.RandomPerspective(distortion_scale=0.2),
-            torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768]),
-        ])
-        self.transform = torchvision.transforms.Compose([
-            torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768])
-        ])
-
-        self.train_accuracy = torchmetrics.Accuracy()
-        self.val_accuracy = torchmetrics.Accuracy()
-        
-        self.model =nn.Sequential(
-          self.encoder,
-          nn.ReLU(),
-          nn.Linear(embedding_size,n_classes)
-        )
-
-    def configure_optimizers(self):        
-        params = list(self.parameters())
-        optimizer = torch.optim.Adam(params)       
-        return optimizer
-
-    def forward(self, image):
-
-        return self.model(image)
-
-    def training_step(self, train_batch, _):
-        images, labels = train_batch
-        images = self.train_transform(images)
-        logits = self(images)
-        loss = self.loss_func(logits, labels)
-        self.train_accuracy(logits.softmax(dim=-1), labels)
-        
-        self.log('train_acc', self.train_accuracy, on_epoch=True, on_step=True)
-        self.log(f'train_loss_finetune', loss, on_epoch=True, on_step=True)
-        return loss
-
-    def validation_step(self, val_batch, _):
-        images, labels = val_batch
-        images = self.transform(images)
-        logits = self(images)
-        loss = self.loss_func(logits, labels)
-        self.val_accuracy(logits.softmax(dim=-1), labels)
-        
-        self.log('val_acc', self.val_accuracy, on_epoch=True, on_step=False)
-        self.log(f'val_loss_finetune', loss, on_epoch=True, on_step=False)
-        return loss
-    
-
 class LinearImageClassifier(pl.LightningModule):
     def __init__(self, 
                  encoder,
                  embedding_size,
                  n_classes,
-                 loss_fn):
+                 original_data,
+                 loss_fn,
+                 apply_augment=True
+                 ):
         super().__init__()
 
         self.save_hyperparameters()
  
         self.encoder = encoder
         self.loss_func = loss_fn
-        self.train_transform = torchvision.transforms.Compose([
-            torchvision.transforms.RandomResizedCrop(size=(32,32)),
-            torchvision.transforms.RandomHorizontalFlip(p=0.3),
-            torchvision.transforms.RandomVerticalFlip(p=0.3),
-            torchvision.transforms.RandomPerspective(distortion_scale=0.2),
-            torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768]),
-        ])
+        self.apply_augment = apply_augment
 
-        self.transform = torchvision.transforms.Compose([
-            torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768])
-        ])
-        
+        if original_data=='cifar10':
+            self.train_transform = torchvision.transforms.Compose([
+                torchvision.transforms.RandomResizedCrop(size=(32,32)),
+                torchvision.transforms.RandomHorizontalFlip(p=0.3),
+                torchvision.transforms.RandomVerticalFlip(p=0.3),
+                torchvision.transforms.RandomPerspective(distortion_scale=0.2),
+                torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768]),
+            ])
+
+            self.transform = torchvision.transforms.Compose([
+                torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768])
+            ])
+        else:
+            self.train_transform = torchvision.transforms.Compose([
+                torchvision.transforms.Normalize((0.1307,), (0.3081,))
+            ])
+
+            self.transform = torchvision.transforms.Compose([
+                 torchvision.transforms.Normalize((0.1307,), (0.3081,))
+            ]) 
+            
         self.train_accuracy = torchmetrics.Accuracy()
         self.val_accuracy = torchmetrics.Accuracy()
         
@@ -139,10 +90,11 @@ class LinearImageClassifier(pl.LightningModule):
           nn.Linear(embedding_size,n_classes)
         )
 
+
     def configure_optimizers(self):        
         params = list(self.linear_head.parameters())
-        # optimizer = torch.optim.Adam(params)       
-        optimizer = torch.optim.SGD(params, lr=0.001, momentum=0.9)
+        optimizer = torch.optim.Adam(params)       
+        # optimizer = torch.optim.SGD(params, lr=0.001, momentum=0.9)
         return optimizer
 
     def forward(self, image):
@@ -155,7 +107,10 @@ class LinearImageClassifier(pl.LightningModule):
 
     def training_step(self, train_batch, _):
         images, labels = train_batch
-        images = self.train_transform(images)
+        if self.apply_augment:
+            images = self.train_transform(images)
+        else:
+            images = self.transform(images)
         logits = self(images)
         loss = self.loss_func(logits, labels)
         self.train_accuracy(logits.softmax(dim=-1), labels)
@@ -176,11 +131,35 @@ class LinearImageClassifier(pl.LightningModule):
         return loss
 
 
+class FineTuneModels(LinearImageClassifier):
+    def __init__(self, 
+                 encoder,
+                 embedding_size,
+                 n_classes,
+                 original_data,
+                 loss_fn,
+                 apply_augment=True):
+        super().__init__(encoder, embedding_size, n_classes, original_data, loss_fn, apply_augment)
+
+        self.save_hyperparameters()
+        self.model =nn.Sequential(
+          encoder,
+          nn.ReLU(),
+          nn.Linear(embedding_size,n_classes)
+        )
+
+    def configure_optimizers(self):        
+        params = list(self.parameters())
+        optimizer = torch.optim.Adam(params)       
+        return optimizer
+
+    def forward(self, image):
+        return self.model(image)
+
+
 def main():
 
     with open('./config/config_fine_tune.yaml') as file:
-        # The FullLoader parameter handles the conversion from YAML
-        # scalar values to Python the dictionary format
         cfg = yaml.load(file, Loader=yaml.FullLoader)
 
     loaders = {
@@ -188,7 +167,9 @@ def main():
         'cifar100': load_cifar100_dataset,
         'cub': load_cub_dataset,
         'cars196': load_cars_dataset,
-        'caltech': load_caltect_dataset
+        'caltech': load_caltect_dataset,
+        'fashion': load_fashion_dataset,
+        'mnist': load_mnist_dataset,
     }
 
     train, test = loaders[cfg['new_data']]('./')
@@ -243,14 +224,16 @@ def main():
             encoder=encoder,
             embedding_size=cfg['embedding_dim'],
             n_classes=cfg['n_classes'],
-            loss_fn=nn.CrossEntropyLoss()
+            loss_fn=nn.CrossEntropyLoss(),
+            original_data=cfg['original_data'],
         )
     elif cfg['method']=='linear':
         model = LinearImageClassifier(
             encoder=encoder,
             embedding_size=cfg['embedding_dim'],
             n_classes=cfg['n_classes'],
-            loss_fn=nn.CrossEntropyLoss()
+            loss_fn=nn.CrossEntropyLoss(),
+            original_data=cfg['original_data'],
         )
 
 
