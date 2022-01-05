@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+from sklearn import preprocessing
 
 import torch
 import torchvision 
@@ -27,11 +28,16 @@ def load_caltect_dataset(dir):
 
 
 def load_cars_dataset(dir):
+    le = preprocessing.LabelEncoder()
+
     data_dir = os.path.join(dir, "data/cars/")
 
     data = pd.read_csv(os.path.join(data_dir,"meta_data.csv"))
     train_data = data[data['split'] == 'train']
     test_data = data[data['split'] == 'test']
+
+    train_data['class'] = le.fit_transform(train_data['class'])
+    test_data['class'] = le.transform(test_data['class'])
 
     cars_train = GenericImageSet(train_data, data_dir, size=32, min_channels=3)
     cars_test = GenericImageSet(test_data, data_dir, size=32, min_channels=3)

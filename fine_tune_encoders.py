@@ -141,7 +141,8 @@ class LinearImageClassifier(pl.LightningModule):
 
     def configure_optimizers(self):        
         params = list(self.linear_head.parameters())
-        optimizer = torch.optim.Adam(params)       
+        # optimizer = torch.optim.Adam(params)       
+        optimizer = torch.optim.SGD(params, lr=0.001, momentum=0.9)
         return optimizer
 
     def forward(self, image):
@@ -196,7 +197,7 @@ def main():
         train,
         batch_size=cfg['batch_size'],
         shuffle=True,
-        num_workers=4,
+        num_workers=2,
         persistent_workers=True,
         pin_memory=True,
         drop_last=False
@@ -206,7 +207,7 @@ def main():
         test,
         batch_size=cfg['batch_size'],
         shuffle=False,
-        num_workers=4,
+        num_workers=2,
         persistent_workers=True,
         pin_memory=True,
         drop_last=False
@@ -232,6 +233,7 @@ def main():
     if cfg['original_method']!='random':
         encoder_checkpoint = f"./multirun/data={cfg['original_data']}/{cfg['original_method']}/{cfg['original_optim']}/encoder.embedding_dim={cfg['embedding_dim']}/checkpoints/last.ckpt"
         model = model.load_from_checkpoint(encoder_checkpoint)
+        print(f"Loaded encoder from {encoder_checkpoint}")	
     encoder = model.encoder
     encoder.logits=False
 
@@ -240,14 +242,14 @@ def main():
         model = FineTuneModels(
             encoder=encoder,
             embedding_size=cfg['embedding_dim'],
-            n_classes=cfg['n_classes']+1,
+            n_classes=cfg['n_classes'],
             loss_fn=nn.CrossEntropyLoss()
         )
     elif cfg['method']=='linear':
         model = LinearImageClassifier(
             encoder=encoder,
             embedding_size=cfg['embedding_dim'],
-            n_classes=cfg['n_classes']+1,
+            n_classes=cfg['n_classes'],
             loss_fn=nn.CrossEntropyLoss()
         )
 
@@ -277,9 +279,9 @@ def main():
     trainer = pl.Trainer( 
         logger=wandb_logger,    
         gpus=None if not torch.cuda.is_available() else -1,
-        max_epochs=100,           
+        max_epochs=30,           
         deterministic=True, 
-        precision=32 if not torch.cuda.is_available() else 16,   
+        precision=32,   
         profiler="simple",
         callbacks=[checkpoint_callback, RichModelSummary()],
     )

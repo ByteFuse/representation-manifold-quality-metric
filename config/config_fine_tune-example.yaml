@@ -10,4 +10,4 @@ batch_size: 32
 need_logits: False
 
 secrets:
-  wandb_key: '*'
+  wandb_key: ''
