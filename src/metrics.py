@@ -104,7 +104,7 @@ def return_distances_label_wise(
     return high_level_results
 
 
-def return_point_based_distances(
+def return_distances(
     dataframe,
     models_to_investigate,
     number_of_alterations,
