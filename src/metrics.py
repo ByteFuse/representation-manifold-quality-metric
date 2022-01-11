@@ -1,174 +1,162 @@
-import random
 from tqdm import tqdm
+
+import pandas as pd
 
 import numpy as np
 import torch 
-
-from src.data.transforms import LocalTransformations
-from src.data.transforms import EasyTransformations, MeduimTransformations, HardTransformations
+import torch.nn.functional as F
 
 
-class ImageCentriodMQM():
+def calculate_pointwise_distances_metrics(points, number_of_alterations, p, embedding_dim):
+
+    points = F.normalize(torch.tensor(points), p=2, dim=1)   
+    points = points.reshape(points.shape[0]//number_of_alterations, -1, embedding_dim) # (number_of_alterations*N, embedding_dim) -> (N, number_of_alterations, embedding_dim)
+
+    distance_matrix = torch.cdist(points, points, p=p)
+    distance_towards_original = distance_matrix[:, 1:, 0]
+    distance_towards_previous = torch.diagonal(distance_matrix, offset=-1, dim1=1, dim2=2)
+
+    df_original = pd.DataFrame(distance_towards_original.numpy())
+    df_previous = pd.DataFrame(distance_towards_previous.numpy())
+
+    pct_changes_original = df_original.pct_change(axis=1).values
+    pct_changes_previous = df_previous.pct_change(axis=1).values
+
+    return distance_towards_original, distance_towards_previous, pct_changes_original, pct_changes_previous
+
+
+def calculate_centroid_distances_metrics(points, number_of_alterations, p, embedding_dim):
+
+    points = F.normalize(torch.tensor(points), p=2, dim=1)   
+    points = points.reshape(number_of_alterations, -1, embedding_dim) # (number_of_alterations*N, embedding_dim) -> (number_of_alterations, N, embedding_dim)
+
+    centriods = torch.mean(points, dim=1)
+    distance_matrix = torch.cdist(centriods, centriods, p=p)
+
+    distance_towards_original = distance_matrix[1:, 0]
+    distance_towards_previous = torch.diagonal(distance_matrix, offset=-1)
+
+    df_original = pd.DataFrame(distance_towards_original.numpy())
+    df_previous = pd.DataFrame(distance_towards_previous.numpy())
+
+    pct_changes_original = df_original.pct_change().values.T[0]
+    pct_changes_previous = df_previous.pct_change().values.T[0]
+
+    return distance_towards_original, distance_towards_previous, pct_changes_original, pct_changes_previous
+
+
+
+def return_distances_label_wise(
+    dataframe,
+    models_to_investigate,
+    labels_range,
+    number_of_alterations,
+    meta_data_collumns,
+    p,
+    embedding_dim,
+    centroid=False):
+
+    high_level_results = pd.DataFrame()
     
-    def __init__(
-        self, 
-        dataloader, 
-        image_size=224,
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225],
-        number_of_runs=10,
-        supervised=False,
-        supervised_calculation=False,
-        number_transformations=5,
-        local_changes=True,
-        seed=None,
-        verbose=False):
-        
-        assert isinstance(dataloader, torch.utils.data.dataloader.DataLoader), 'dataloader must be of type torch.utils.data.dataloader.DataLoader'
+    for model in tqdm(models_to_investigate):
+        for label in range(labels_range):
 
-        if local_changes:
-            self.augmentation_distribution = LocalTransformations(
-                image_size=image_size,
-                mean=mean,
-                std=std,
-                number_transformations=number_transformations
-            )
-        else:
-            self.augmentation_distributions = {
-                'easy':EasyTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
-                'meduim': MeduimTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations),
-                'hard':HardTransformations(image_size=image_size, mean=mean, std=std, number_transformations=number_transformations)
-            }
-        self.dataloader = dataloader  
-        self.local_changes = local_changes
-        self.number_of_runs = number_of_runs
-        self.supervised=supervised
-        self.supervised_calculation = supervised_calculation
-        self.verbose = verbose
-        self.seed = seed
+            points = dataframe[(dataframe.model==model)&(dataframe.label==label)].\
+                            sort_values(['image_index', meta_data_collumns[0]]).\
+                            drop(meta_data_collumns, axis=1).values
 
-    def calculate_mqm(self, representations, labels):
-        n_embeddings = representations.size(-1)
-        if self.supervised_calculation:
-            unique_labels = torch.unique(torch.tensor(labels), sorted=True, return_inverse=False)
-            
-            centroid_mqm = 0
-
-            for label in unique_labels:
-                indices = (torch.tensor(labels) == torch.tensor(label))
-                cluster_reps = representations[indices].reshape(self.number_of_runs, -1, n_embeddings)
-                centriods = torch.mean(cluster_reps, dim=1)
-                distance_matrix = torch.cdist(centriods, centriods, p=2)
-                centroid_mqm += torch.mean(distance_matrix)
-            
-            centroid_mqm /= len(unique_labels)
-
-        else:
-           centriods = torch.mean(representations, dim=1)
-           distance_matrix = torch.cdist(centriods, centriods, p=2)
-           centroid_mqm = torch.mean(distance_matrix)
-        
-        return centroid_mqm
-
-    def generate_representations(self, model, augmentations, run_number):
-        representations = []
-        labels = []
-        seed = self.seed if self.seed else random.randint(0, 100000)
-        device = next(model.parameters()).device
-
-        for batch in self.dataloader:
-            if self.supervised:
-                image, label = batch
-                labels.extend(label)
+            if centroid:
+                distance_towards_original, distance_towards_previous, pct_changes_original, pct_changes_previous = calculate_centroid_distances_metrics(
+                    points, number_of_alterations, p, embedding_dim)
+                                
+                _ = pd.DataFrame({
+                    'original_pct_change_mean':np.abs(pct_changes_original),
+                    'original_mean':distance_towards_original.numpy(),
+                    'previous_pct_change_mean':np.abs(pct_changes_previous),
+                    'previous_mean':distance_towards_previous.numpy(),
+                    'label':[label]*(number_of_alterations-1),
+                    'model':[model]*(number_of_alterations-1),
+                    'alteration':list(range(number_of_alterations-1))
+                })
+                
+                
             else:
-                image = batch
-            image = augmentations(image, seed+run_number)
-    
-            with torch.no_grad():
-                representations.append(model(image.to(device)).cpu())
-
-        representations = torch.cat(representations, dim=0)
-
-        if self.supervised:
-            return representations, labels
-        else:
-            return representations
-
-        
-    def forward(self, model, difficulty='meduim'):
-
-        assert difficulty in ['easy', 'meduim', 'hard'], 'difficulty must be one of: easy, meduim or hard'
-
-        training_state = False
-
-        if model.training:
-            model.eval()
-            training_state = True
-
-        if self.local_changes:
-            augmentation_distributions = self.augmentation_distribution
-        else:
-            augmentation_distributions = self.augmentation_distributions[difficulty]
-
-        augmented_representations = []
-        augmented_labels =[]
-
-        for n in tqdm(range(self.number_of_runs), disable= not self.verbose):
-
-            if self.supervised:
-                representations, labels = self.generate_representations(model, augmentation_distributions, n)
-                representations = representations.unsqueeze(0)
-                augmented_labels.append(labels)
-            else:
-                representations = self.generate_representations(model, augmentation_distributions, n).unsqueeze(0)
-            augmented_representations.extend(representations.detach().numpy())
-
-        augmented_representations = torch.tensor(np.array(augmented_representations))
-        centriod_mqm = self.calculate_mqm(augmented_representations, augmented_labels)
-
-        if training_state:
-            model.train()
-
-        return centriod_mqm
-    
-    
-    __call__ = forward
-
-
-class ImagePointWiseMQM(ImageCentriodMQM):
-    def __init__(
-        self, 
-        dataloader, 
-        image_size=224,
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225],
-        number_of_runs=10,
-        supervised=False,
-        supervised_calculation=False,
-        number_transformations=5,
-        seed=None,
-        local_changes=True,
-        verbose=False,):
-
-        super().__init__(dataloader, image_size, mean, std, number_of_runs, supervised, supervised_calculation, number_transformations, local_changes, seed, verbose)
-
-
-    def calculate_mqm(self, representations, labels):
-        n_embeddings = representations.size(-1)
-        if self.supervised:
-            unique_labels = torch.unique(torch.tensor(labels), sorted=True, return_inverse=False)            
-            point_wise_mqm = 0
-
-            for label in unique_labels:
-                indices = (torch.tensor(labels) == torch.tensor(label))
-                cluster_reps = representations[indices].reshape(self.number_of_runs, -1, n_embeddings)
-                distance_matrix = torch.cdist(cluster_reps, cluster_reps, p=2)
-                point_wise_mqm += torch.mean(distance_matrix)
+                distance_towards_original, distance_towards_previous, pct_changes_original, pct_changes_previous = calculate_pointwise_distances_metrics(
+                    points, number_of_alterations, p, embedding_dim)
+                
             
-            point_wise_mqm /= len(unique_labels)
+                _ = pd.DataFrame({
+                    'original_pct_change_mean':np.abs(pct_changes_original).mean(0),
+                    'original_pct_change_std':np.abs(pct_changes_original).std(0),
+                    'original_mean':distance_towards_original.mean(0),
+                    'original_std':distance_towards_original.std(0), 
+                    'previous_pct_change_mean':np.abs(pct_changes_previous).mean(0),
+                    'previous_pct_change_std':np.abs(pct_changes_previous).std(0),
+                    'previous_mean':distance_towards_previous.mean(0),
+                    'previous_std':distance_towards_previous.std(0), 
+                    'label':[label]*(number_of_alterations-1),
+                    'model':[model]*(number_of_alterations-1),
+                    'alteration':list(range(number_of_alterations-1))
+                })
+            
+            high_level_results = pd.concat([high_level_results, _[1:]])
 
+    return high_level_results
+
+
+def return_distances(
+    dataframe,
+    models_to_investigate,
+    number_of_alterations,
+    meta_data_collumns,
+    p,
+    embedding_dim,
+    centroid=False):
+    
+    high_level_results = pd.DataFrame()
+
+    for model in tqdm(models_to_investigate):
+        points = dataframe[dataframe.model==model].\
+                        sort_values(['image_index', meta_data_collumns[0]]).\
+                        drop(meta_data_collumns, axis=1).values
+
+        if centroid:
+            distance_towards_original, distance_towards_previous, pct_changes_original, pct_changes_previous = calculate_centroid_distances_metrics(
+                points, 
+                number_of_alterations, 
+                p, 
+                embedding_dim)
+            
+            _ = pd.DataFrame({
+                    'original_pct_change_mean':np.abs(pct_changes_original),
+                    'original_mean':distance_towards_original.numpy(),
+                    'previous_pct_change_mean':np.abs(pct_changes_previous),
+                    'previous_mean':distance_towards_previous.numpy(),
+                    'model':[model]*(number_of_alterations-1),
+                    'alteration':list(range(number_of_alterations-1))
+                })
         else:
-            distance_matrix = torch.cdist(representations, representations, p=2)
-            point_wise_mqm = torch.mean(distance_matrix)
-        
-        return point_wise_mqm
+            distance_towards_original, distance_towards_previous, pct_changes_original, pct_changes_previous = calculate_pointwise_distances_metrics(
+                points,
+                number_of_alterations, 
+                p, 
+                embedding_dim)
+
+            _ = pd.DataFrame({
+                'original_pct_change_mean':np.abs(pct_changes_original).mean(0),
+                'original_pct_change_std':np.abs(pct_changes_original).std(0),
+                'original_mean':distance_towards_original.mean(0),
+                'original_std':distance_towards_original.std(0), 
+                'previous_pct_change_mean':np.abs(pct_changes_previous).mean(0),
+                'previous_pct_change_std':np.abs(pct_changes_previous).std(0),
+                'previous_mean':distance_towards_previous.mean(0),
+                'previous_std':distance_towards_previous.std(0), 
+                'model':[model]*(number_of_alterations-1),
+                'alteration':list(range(number_of_alterations-1))})
+
+        high_level_results = pd.concat([high_level_results, _[1:]])
+
+    return high_level_results
+
+
+

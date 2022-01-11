@@ -6,19 +6,26 @@ import torchvision
 
 class GenericImageSet(torch.utils.data.Dataset):
 
-    def __init__(self, metadata, root_dir):
+    def __init__(self, metadata, root_dir, size=32, min_channels=1):
 
-        self.images = metadata['image']
-        self.labels = metadata['class']
+        self.images = metadata['image'].values
+        self.labels = metadata['class'].values
         self.images = [os.path.join(root_dir, image) for image in self.images]
+        self.transform = torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((size, size))
+        ])
+        self.min_channels = min_channels
 
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, idx):
-        image_path = self.images[idx]
 
-        image = torchvision.transforms.ToTensor()(Image.open(image_path))
+        image_path = self.images[idx]
+        image = self.transform(Image.open(image_path))
+        if image.size(0) != self.min_channels:
+            return None
         label = self.labels[idx]
 
         return image, label

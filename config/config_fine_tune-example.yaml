@@ -1,0 +1,13 @@
+original_data: 'mnist'
+new_data: 'fashion'
+method: 'linear'
+original_optim: 'sgd'
+fine_tune_optim: 'adam'
+
+n_classes: 10
+embedding_dim: [2,3,256,512,1024,2048]
+batch_size: 128
+need_logits: False
+
+secrets:
+  wandb_key: '*'
