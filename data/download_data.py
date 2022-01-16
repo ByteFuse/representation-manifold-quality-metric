@@ -24,6 +24,15 @@ def download_mnist(save_location):
     )
 
 
+def download_omniglot(save_location):
+    torchvision.datasets.Omniglot(
+        root=save_location,
+        transform=None,
+        target_transform=None,
+        download=True
+    )
+
+
 def download_fashion_mnist(save_location):
     torchvision.datasets.FashionMNIST(
         root=save_location,
@@ -156,10 +165,10 @@ def download_cub(save_location):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Scripts to download datasets used in the measuring manfifold quality paper.')
-    parser.add_argument('--dataset', type=str, default='all', help='What dataset should be downloaded. Options are all, mnist, cifar10, cifar100, cars, cub.')
+    parser.add_argument('--dataset', type=str, default='all', help='What dataset should be downloaded. Options are all, mnist, cifar10, cifar100, cars, cub, fashion, omniglot.')
     args = parser.parse_args()
 
-    assert args.dataset.lower() in ["all", "mnist", "cifar10", "cifar100", "cars", "cub", "fashion"], "Only allowed datasets are all, mnist, cifar10, cifar100, cars, cub"
+    assert args.dataset.lower() in ["all", "mnist", "cifar10", "cifar100", "cars", "cub", "fashion", 'omniglot'], "Only allowed datasets are all, mnist, cifar10, cifar100, cars, cub, fashion, omniglot"
 
     # getting data directory location
     data_dir = os.path.dirname(__file__)
@@ -170,6 +179,7 @@ if __name__ == '__main__':
     cars_loc = os.path.join(data_dir, 'cars')
     cub_loc = os.path.join(data_dir, 'cub')
     fashion_loc = os.path.join(data_dir, 'fashion')
+    omni_loc = os.path.join(data_dir, 'omniglot')
 
     if args.dataset.lower() == "all":
         print('Downloading MNIST data')
@@ -202,7 +212,9 @@ if __name__ == '__main__':
     elif args.dataset.lower() == 'fashion':
         print('Downloading Fashion-MNIST data')
         download_fashion_mnist(save_location=fashion_loc)    
-
+    elif args.dataset.lower() == 'omniglot':
+        print('Downloading OMNIGLOT data')
+        download_omniglot(save_location=omni_loc)   
         
 
 
