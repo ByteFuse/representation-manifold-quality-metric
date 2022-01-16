@@ -14,7 +14,7 @@ def calculate_pointwise_distances_metrics(points, number_of_alterations, p, embe
 
     if points.shape[-1]>512:
         distances = []
-        for i, j in zip(range(0, points.shape[0], 1000), range(1000, points.shape[0]+1000, 1000)):
+        for i, j in zip(range(0, points.shape[0], 1000), range(1000, points.shape[0]+1000, 1000), desc='distance_matrix'):
             distances.append(torch.cdist(points[i:j], points[i:j], p=p))
         distance_matrix = torch.cat(distances, 0)
     else:
@@ -72,7 +72,7 @@ def return_distances_label_wise(
     high_level_results = pd.DataFrame()
     plot_results = pd.DataFrame()
     
-    for model in tqdm(models_to_investigate):
+    for model in tqdm(models_to_investigate, desc="Models"):	
         for label in range(labels_range):
 
             points = dataframe[(dataframe.model==model)&(dataframe.label==label)].\
@@ -179,7 +179,7 @@ def return_distances(
     high_level_results = pd.DataFrame()
     plot_results = pd.DataFrame()
 
-    for model in tqdm(models_to_investigate):
+    for model in tqdm(models_to_investigate, desc='Models'):	
         points = dataframe[dataframe.model==model].\
                         sort_values(['image_index', meta_data_collumns[0]]).\
                         drop(meta_data_collumns, axis=1).values

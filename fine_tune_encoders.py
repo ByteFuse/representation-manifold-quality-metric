@@ -279,7 +279,7 @@ def main():
             trainer = pl.Trainer( 
                 logger=wandb_logger,    
                 gpus=None if not torch.cuda.is_available() else -1,
-                max_epochs=30,           
+                max_epochs=100,           
                 deterministic=True, 
                 # precision=32 if not torch.cuda.is_available() else 16,   
                 profiler="simple",
