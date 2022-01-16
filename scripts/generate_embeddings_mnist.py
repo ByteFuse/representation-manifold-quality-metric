@@ -13,11 +13,6 @@ from src.models import LeNet
 
 from src.data.utils import load_cifar10_dataset, load_mnist_dataset
 
-
-EMBEDDING_DIM=256
-OPTIM='sgd'
-
-
 class QueryRefrenceImageEncoder(pl.LightningModule):
     def __init__(self, 
                  encoder,
@@ -51,8 +46,8 @@ if __name__ == "__main__":
 
     train, test = load_mnist_dataset('../')
 
-    for OPTIM in ['adam', 'sgd']:
-        for EMBEDDING_DIM in [256, 512, 1024,2048]:
+    for OPTIM in ['adam']:
+        for EMBEDDING_DIM in [128,256,512,1024]:
             encoder = LeNet(
                     embedding_dim=EMBEDDING_DIM, 
                     dropout=0,
@@ -125,7 +120,6 @@ if __name__ == "__main__":
                     logits=False,
                     number_classes=None
                 )
-            # encoder_random.load_state_dict(torch.load(f'../multirun/mnist_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
             encoder_random.eval()
             encoder_random.cuda()
 
@@ -136,8 +130,7 @@ if __name__ == "__main__":
             transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
             dataloader = torch.utils.data.DataLoader(test, batch_size=1024, shuffle=False, num_workers=8, persistent_workers=True, pin_memory=False, drop_last=False)
 
-            df = pd.DataFrame()
-
+            df = pd.DataFrame()    
             for model, name in tqdm(zip(models, model_names), total=len(models), desc='model', leave=False):
                 for epsilon in tqdm(epsilons_dist, desc='epsilon', leave=False):
                     projected_points = np.zeros(shape=(1, EMBEDDING_DIM))
@@ -166,7 +159,7 @@ if __name__ == "__main__":
                 df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
                 df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
 
-                save_loc = f'../results/data=mnist/{OPTIM}/embedding_dim={EMBEDDING_DIM}'
+                save_loc = f'F://results/data=mnist/{OPTIM}/embedding_dim={EMBEDDING_DIM}'
                 if not os.path.exists(save_loc):
                     os.makedirs(save_loc)
                 df.to_pickle(f'{save_loc}/{name}_white_noise_run{0}.pickle')

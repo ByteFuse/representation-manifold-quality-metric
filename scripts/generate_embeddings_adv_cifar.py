@@ -18,8 +18,6 @@ from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, N
 from src.data.utils import load_cifar10_dataset
 from src.attacks import return_fgsm_contrastive_attack_images, return_fgsm_supervised_attack_images
 
-EMBEDDING_DIM=128
-OPTIM='adam'
 PGD_ITTERATION=30
 
 class QueryRefrenceImageEncoder(pl.LightningModule):
@@ -56,7 +54,7 @@ if __name__ == "__main__":
     train, test = load_cifar10_dataset('../')
 
     for OPTIM in ['sgd', 'adam']:
-        for EM_DIM in [128]:
+        for EMBEDDING_DIM in [128]:
             encoder = CifarResNet18(
                     embedding_dim=EMBEDDING_DIM, 
                     hidden_dim=1024,
