@@ -1,0 +1,5 @@
+name: 'omniglot'
+resize: 32
+batch_size: 64
+num_workers: 8
+n_batches_accumalation: 8
