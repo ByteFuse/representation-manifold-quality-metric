@@ -204,7 +204,8 @@ def main():
 
 
     embedding_dims = cfg['embedding_dim']
-    for method in ['cross-entropy', 'triplet-supervised', 'triplet', 'triplet-entropy', 'random', 'nt-xent']:
+    # for method in ['cross-entropy', 'triplet-supervised', 'triplet', 'triplet-entropy', 'random', 'nt-xent']:
+    for method in ['triplet']:
         for embedding_dim in embedding_dims:
             cfg['embedding_dim'] = embedding_dim #reassign here for logging purposes
             cfg['original_method'] = method

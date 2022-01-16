@@ -12,16 +12,28 @@ def calculate_pointwise_distances_metrics(points, number_of_alterations, p, embe
     points = F.normalize(torch.tensor(points), p=2, dim=1)   
     points = points.reshape(points.shape[0]//number_of_alterations, -1 , embedding_dim) # (number_of_alterations*N, embedding_dim) -> (N, number_of_alterations, embedding_dim)
 
-    distance_matrix = torch.cdist(points, points, p=p)
+    if points.shape[-1]>512:
+        distances = []
+        for i, j in zip(range(0, points.shape[0], 1000), range(1000, points.shape[0]+1000, 1000)):
+            distances.append(torch.cdist(points[i:j], points[i:j], p=p))
+        distance_matrix = torch.cat(distances, 0)
+    else:
+        distance_matrix = torch.cdist(points, points, p=p)
 
     distance_towards_original = distance_matrix[:, 1:, 0] # (N, number_of_alterations) <- row is distances to original point
     distance_towards_previous = torch.diagonal(distance_matrix, offset=-1, dim1=1, dim2=2)
 
-    df_original = pd.DataFrame(distance_towards_original.numpy()+1e-12) #ensures no inf
-    df_previous = pd.DataFrame(distance_towards_previous.numpy()+1e-12) #ensures no inf
+    df_original = pd.DataFrame(distance_towards_original.numpy())
+    df_previous = pd.DataFrame(distance_towards_previous.numpy())
 
-    pct_changes_original = df_original.pct_change(axis=1).values.T[1:].T # remove NAN at start
-    pct_changes_previous = df_previous.pct_change(axis=1).values.T[1:].T # remove NAN at start
+    pct_changes_original = df_original.pct_change(axis=1).drop(0,axis=1) # we know first value will be nan
+    pct_changes_previous = df_previous.pct_change(axis=1).drop(0,axis=1)
+
+    # filter out points that mess stuff up
+    pct_changes_original.replace([np.inf, -np.inf], np.nan, inplace=True)
+    pct_changes_previous.replace([np.inf, -np.inf], np.nan, inplace=True)
+    pct_changes_original = pct_changes_original.dropna().values
+    pct_changes_previous = pct_changes_previous.dropna().values
 
     return distance_towards_original, distance_towards_previous, pct_changes_original, pct_changes_previous
 
@@ -93,7 +105,7 @@ def return_distances_label_wise(
                 total_spikes_average = total_spikes_per_point.mean()
                 total_spikes_std_error = total_spikes_per_point.std()
                 total_spikes_average_previous = total_spikes_per_point_previous.mean()
-                total_spikes_std_error_previous = total_spikes_per_point_previous.std()/np.sqrt(len(total_spikes_per_point_previous))
+                total_spikes_std_error_previous = total_spikes_per_point_previous.std()
                 total_spikes = total_spikes_per_point.sum()
                 total_spikes_revious = total_spikes_per_point_previous.sum()
 
