@@ -125,11 +125,11 @@ def main():
        transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
 
 
-    embedding_dims = [3, 16,32,64,128,256,512]
+    embedding_dims = [3,16,32,64,128,256,512]
 
     results = pd.DataFrame()
     
-    for optim in ['sgd']:
+    for optim in ['adam','sgd']:
         for method in ['cross-entropy', 'triplet-supervised', 'triplet', 'triplet-entropy', 'random', 'nt-xent']:
             for embedding_dim in embedding_dims:
                 
@@ -207,7 +207,7 @@ def main():
                 results = pd.concat([results, _])
                 
                 if FINE_TUNE:
-                    results.to_csv(f'F://results/search/knn_results_{DATASET}_to_{NEW_DATASET}_finetuned_quick_combine.csv', index=False)
+                    results.to_csv(f'F://results/search/knn_results_{DATASET}_to_{NEW_DATASET}_finetuned.csv', index=False)
                 else:
                     results.to_csv(f'F://results/search/knn_results_{DATASET}_to_{NEW_DATASET}.csv', index=False)
                 print('*'*50)
