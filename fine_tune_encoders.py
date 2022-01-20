@@ -204,7 +204,8 @@ def main():
 
 
     embedding_dims = cfg['embedding_dim']
-    for method in ['cross-entropy', 'triplet-supervised', 'triplet', 'triplet-entropy', 'random', 'nt-xent']:
+    # for method in ['cross-entropy', 'triplet-supervised', 'triplet', 'triplet-entropy', 'random', 'nt-xent']:
+    for method in ['triplet']:
         for embedding_dim in embedding_dims:
             cfg['embedding_dim'] = embedding_dim #reassign here for logging purposes
             cfg['original_method'] = method
@@ -278,7 +279,7 @@ def main():
             trainer = pl.Trainer( 
                 logger=wandb_logger,    
                 gpus=None if not torch.cuda.is_available() else -1,
-                max_epochs=30,           
+                max_epochs=100,           
                 deterministic=True, 
                 # precision=32 if not torch.cuda.is_available() else 16,   
                 profiler="simple",

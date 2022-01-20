@@ -149,3 +149,26 @@ def load_fashion_dataset(dir):
     )
 
     return fashion_train, fashion_test
+
+
+def load_omniglot_dataset(dir):
+    # getting data directory location
+    data_dir = os.path.join(dir, "data/omniglot/")
+
+    data = torchvision.datasets.Omniglot(
+        root=data_dir,
+        transform= torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((28, 28))
+        ]),
+        target_transform=None,
+        download=False
+    )
+
+    omni_train, omni_test = torch.utils.data.random_split(
+            data,
+            [int(len(data)*0.8), len(data)-int(len(data)*0.8)],
+            generator=torch.Generator().manual_seed(42)
+        )
+
+    return omni_train, omni_test

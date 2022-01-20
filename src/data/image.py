@@ -25,7 +25,7 @@ class GenericImageSet(torch.utils.data.Dataset):
         image_path = self.images[idx]
         image = self.transform(Image.open(image_path))
         if image.size(0) != self.min_channels:
-            return None
+            image = image.repeat(3, 1, 1) # repeat the channels
         label = self.labels[idx]
 
         return image, label
