@@ -20,6 +20,7 @@ from src.data.utils import (
     load_cars_dataset,
     load_caltect_dataset,
     load_fashion_dataset,
+    load_kmnist_dataset,
     load_mnist_dataset,
     load_omniglot_dataset
 )
@@ -94,6 +95,7 @@ def main():
         'fashion': load_fashion_dataset,
         'mnist': load_mnist_dataset,
         'omniglot': load_omniglot_dataset,
+        'kmnist': load_kmnist_dataset,
     }
 
     train, test = loaders[NEW_DATASET]('./')
