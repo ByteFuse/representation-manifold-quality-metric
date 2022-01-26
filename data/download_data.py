@@ -87,6 +87,24 @@ def download_cifar100(save_location):
         download=True
     )
 
+def download_kmnist(save_location):
+    torchvision.datasets.KMNIST(
+        root=save_location,
+        train=False,
+        transform=torchvision.transforms.ToTensor(),
+        target_transform=None,
+        download=True
+    )
+
+    torchvision.datasets.KMNIST(
+        root=save_location,
+        train=True,
+        transform=torchvision.transforms.ToTensor(),
+        target_transform=None,
+        download=True
+    )
+
+
 
 def download_cars(save_location):
     
@@ -168,7 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='all', help='What dataset should be downloaded. Options are all, mnist, cifar10, cifar100, cars, cub, fashion, omniglot.')
     args = parser.parse_args()
 
-    assert args.dataset.lower() in ["all", "mnist", "cifar10", "cifar100", "cars", "cub", "fashion", 'omniglot'], "Only allowed datasets are all, mnist, cifar10, cifar100, cars, cub, fashion, omniglot"
+    assert args.dataset.lower() in ["all", "mnist", "cifar10", "cifar100", "cars", "cub", "fashion", 'omniglot', 'kmnist'], "Only allowed datasets are all, mnist, cifar10, cifar100, cars, cub, fashion, omniglot"
 
     # getting data directory location
     data_dir = os.path.dirname(__file__)
@@ -180,6 +198,7 @@ if __name__ == '__main__':
     cub_loc = os.path.join(data_dir, 'cub')
     fashion_loc = os.path.join(data_dir, 'fashion')
     omni_loc = os.path.join(data_dir, 'omniglot')
+    kmnist_loc = os.path.join(data_dir, 'kmnist')
 
     if args.dataset.lower() == "all":
         print('Downloading MNIST data')
@@ -194,6 +213,10 @@ if __name__ == '__main__':
         download_cub(save_location=cub_loc)
         print('Downloading Fashion-MNIST data')
         download_fashion_mnist(save_location=fashion_loc)
+        print('Downloading OMNIGLOT data')
+        download_omniglot(save_location=omni_loc)   
+        print('Downloading KMNIST data')
+        download_kmnist(save_location=kmnist_loc)
     elif args.dataset.lower() == 'mnist':
         print('Downloading MNIST data')
         download_mnist(save_location=mnsit_loc)
@@ -215,6 +238,9 @@ if __name__ == '__main__':
     elif args.dataset.lower() == 'omniglot':
         print('Downloading OMNIGLOT data')
         download_omniglot(save_location=omni_loc)   
+    elif args.dataset.lower() == 'kmnist':
+        print('Downloading KMNIST data')
+        download_kmnist(save_location=kmnist_loc)   
         
 
 

@@ -27,6 +27,28 @@ def load_caltect_dataset(dir):
     return caltech_train, caltech_test
 
 
+def load_kmnist_dataset(dir):
+
+    data_dir = os.path.join(dir, "data/kmnist/")
+    kmnist_train = torchvision.datasets.KMNIST(
+        root=data_dir,
+        train=True,
+        transform=torchvision.transforms.ToTensor(),
+        target_transform=None,
+        download=True
+    )
+
+    kmnist_test = torchvision.datasets.KMNIST(
+        root=data_dir,
+        train=False,
+        transform=torchvision.transforms.ToTensor(),
+        target_transform=None,
+        download=True
+    )
+
+    return kmnist_train, kmnist_test
+
+
 def load_cars_dataset(dir):
     le = preprocessing.LabelEncoder()
 

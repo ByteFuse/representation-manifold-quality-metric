@@ -31,6 +31,8 @@ commonmark==0.9.1
 configparser==5.0.2
 cryptography==35.0.0
 cycler==0.11.0
+daal==2021.5.1
+daal4py==2021.5.1
 debugpy==1.5.1
 decorator==5.1.0
 defusedxml==0.7.1
@@ -171,6 +173,7 @@ sagemaker==2.68.0
 sagemaker-training==4.0.0
 scikit-image==0.19.0
 scikit-learn==1.0.1
+scikit-learn-intelex==2021.5.1
 scipy==1.7.1
 seaborn==0.11.2
 Send2Trash==1.8.0
@@ -183,10 +186,11 @@ smdebug-rulesconfig==1.0.1
 smmap==5.0.0
 SoundFile==0.10.3.post1
 soupsieve==2.3.1
--e git+ssh://git@github.com/ByteFuse/measuring-manifold-quality.git@d24a0572538bb770f43fbe305ab24049dc286f3b#egg=src
+-e git+ssh://git@github.com/ByteFuse/measuring-manifold-quality.git@5bee3a073665b1015e9382cbdcb677c95b90b187#egg=src
 statsmodels==0.13.0
 subprocess.run==0.0.8
 subprocess32==3.5.4
+tbb==2021.4.0
 tenacity==8.0.1
 tensorboard==2.7.0
 tensorboard-data-server==0.6.1

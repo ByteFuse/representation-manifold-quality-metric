@@ -86,9 +86,9 @@ for OPTIM in tqdm(['adam', 'sgd'], desc='OPTIM'):
     for embedding_dim in tqdm([128], desc='embedding'):
 
         if ADVERSERIAL:
-            path = f'F://results/data={DATASET}/{OPTIM}/ADVERSERIAL_attacks/embedding_dim={embedding_dim}/'
+            path = f'../results/data={DATASET}/{OPTIM}/ADVERSERIAL_attacks/embedding_dim={embedding_dim}/'
         else:
-            path = f'F://results/data={DATASET}/{OPTIM}/embedding_dim={embedding_dim}/'
+            path = f'../results/data={DATASET}/{OPTIM}/embedding_dim={embedding_dim}/'
 
         df = pd.DataFrame()
         for f in tqdm(os.listdir(path), desc='loading'):
@@ -152,7 +152,7 @@ for OPTIM in tqdm(['adam', 'sgd'], desc='OPTIM'):
         high_level_label = pd.concat([high_level_label, label_based])
         plot_label = pd.concat([plot_label, plot_label_based ])
         
-        high_level.to_csv(f'F://results/distances/results_{DATASET}_{alterations}_p-{p}_high_level_data.csv', index=False)
-        plot.to_csv(f'F://results/distances/results_{DATASET}_{alterations}_p-{p}_plot_data.csv', index=False)
-        high_level_label.to_csv(f'F://results/distances/results_{DATASET}_{alterations}_p-{p}_high_level_label_data.csv', index=False)
-        plot_label.to_csv(f'F://results/distances/results_{DATASET}_{alterations}_p-{p}_plot_label_data.csv', index=False)
+        high_level.to_csv(f'../results/distances/results_{DATASET}_{alterations}_p-{p}_high_level_data.csv', index=False)
+        plot.to_csv(f'../results/distances/results_{DATASET}_{alterations}_p-{p}_plot_data.csv', index=False)
+        high_level_label.to_csv(f'../results/distances/results_{DATASET}_{alterations}_p-{p}_high_level_label_data.csv', index=False)
+        plot_label.to_csv(f'../results/distances/results_{DATASET}_{alterations}_p-{p}_plot_label_data.csv', index=False)

@@ -20,6 +20,7 @@ from src.data.utils import (
     load_cars_dataset,
     load_caltect_dataset,
     load_fashion_dataset,
+    load_kmnist_dataset,
     load_mnist_dataset,
     load_omniglot_dataset
 )
@@ -94,6 +95,7 @@ def main():
         'fashion': load_fashion_dataset,
         'mnist': load_mnist_dataset,
         'omniglot': load_omniglot_dataset,
+        'kmnist': load_kmnist_dataset,
     }
 
     train, test = loaders[NEW_DATASET]('./')
@@ -207,9 +209,9 @@ def main():
                 results = pd.concat([results, _])
                 
                 if FINE_TUNE:
-                    results.to_csv(f'F://results/search/knn_results_{DATASET}_to_{NEW_DATASET}_finetuned.csv', index=False)
+                    results.to_csv(f'../results/search/knn_results_{DATASET}_to_{NEW_DATASET}_finetuned.csv', index=False)
                 else:
-                    results.to_csv(f'F://results/search/knn_results_{DATASET}_to_{NEW_DATASET}.csv', index=False)
+                    results.to_csv(f'../results/search/knn_results_{DATASET}_to_{NEW_DATASET}.csv', index=False)
                 print('*'*50)
 if __name__ == "__main__":
     main()

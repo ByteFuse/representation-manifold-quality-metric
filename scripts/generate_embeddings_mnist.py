@@ -47,7 +47,7 @@ if __name__ == "__main__":
     train, test = load_mnist_dataset('../')
 
     for OPTIM in ['adam']:
-        for EMBEDDING_DIM in [128,256,512,1024]:
+        for EMBEDDING_DIM in [16,32,64,128,256,512]:
             encoder = LeNet(
                     embedding_dim=EMBEDDING_DIM, 
                     dropout=0,
@@ -159,7 +159,7 @@ if __name__ == "__main__":
                 df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
                 df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
 
-                save_loc = f'F://results/data=mnist/{OPTIM}/embedding_dim={EMBEDDING_DIM}'
+                save_loc = f'../results/data=mnist/{OPTIM}/embedding_dim={EMBEDDING_DIM}'
                 if not os.path.exists(save_loc):
                     os.makedirs(save_loc)
                 df.to_pickle(f'{save_loc}/{name}_white_noise_run{0}.pickle')

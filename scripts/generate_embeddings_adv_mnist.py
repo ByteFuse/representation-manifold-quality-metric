@@ -14,9 +14,6 @@ from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, N
 from src.data.utils import load_mnist_dataset
 from src.attacks import return_fgsm_contrastive_attack_images, return_fgsm_supervised_attack_images
 
-
-# EMBEDDING_DIM=256
-# OPTIM='sgd'
 PGD_ITTERATION=30 #if 1 it is FGSM then alter episilon
 
 
@@ -53,8 +50,8 @@ if __name__ == "__main__":
 
     train, test = load_mnist_dataset('../')
 
-    for OPTIM in ['adam']:
-        for EMBEDDING_DIM in [128,256,512]:
+    for OPTIM in ['adam', 'sgd']:
+        for EMBEDDING_DIM in [16,32,64,128,256,512]:
             encoder = LeNet(
                     embedding_dim=EMBEDDING_DIM, 
                     dropout=0,
@@ -215,7 +212,7 @@ if __name__ == "__main__":
                 df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
                 df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
 
-                save_loc = f'F://results/data=mnist/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
+                save_loc = f'../results/data=mnist/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
                 if not os.path.exists(save_loc):
                     os.makedirs(save_loc)
                 df.to_pickle(f'{save_loc}/{name}_adverserial.pickle')
