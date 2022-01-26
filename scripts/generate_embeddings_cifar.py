@@ -13,11 +13,6 @@ from src.models import CifarResNet18
 
 from src.data.utils import load_cifar10_dataset
 
-
-EMBEDDING_DIM=128
-OPTIM='adam'
-
-
 class QueryRefrenceImageEncoder(pl.LightningModule):
     def __init__(self, 
                  encoder,
@@ -52,7 +47,7 @@ if __name__ == "__main__":
     train, test = load_cifar10_dataset('../')
 
     for OPTIM in ['sgd', 'adam']:
-        for EMBEDDING_DIM in [128]:
+        for EMBEDDING_DIM in [16,32,64,128,256,512]:
 
             encoder = CifarResNet18(
                     embedding_dim=EMBEDDING_DIM, 

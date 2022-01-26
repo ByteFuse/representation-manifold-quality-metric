@@ -14,9 +14,6 @@ from src.losses import TripletLoss, TripletLossSupervised, TripletEntropyLoss, N
 from src.data.utils import load_mnist_dataset
 from src.attacks import return_fgsm_contrastive_attack_images, return_fgsm_supervised_attack_images
 
-
-# EMBEDDING_DIM=256
-# OPTIM='sgd'
 PGD_ITTERATION=30 #if 1 it is FGSM then alter episilon
 
 
@@ -53,8 +50,8 @@ if __name__ == "__main__":
 
     train, test = load_mnist_dataset('../')
 
-    for OPTIM in ['adam']:
-        for EMBEDDING_DIM in [128,256,512]:
+    for OPTIM in ['adam', 'sgd']:
+        for EMBEDDING_DIM in [16,32,64,128,256,512]:
             encoder = LeNet(
                     embedding_dim=EMBEDDING_DIM, 
                     dropout=0,

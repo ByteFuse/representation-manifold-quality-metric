@@ -47,7 +47,7 @@ if __name__ == "__main__":
     train, test = load_mnist_dataset('../')
 
     for OPTIM in ['adam']:
-        for EMBEDDING_DIM in [128,256,512,1024]:
+        for EMBEDDING_DIM in [16,32,64,128,256,512]:
             encoder = LeNet(
                     embedding_dim=EMBEDDING_DIM, 
                     dropout=0,

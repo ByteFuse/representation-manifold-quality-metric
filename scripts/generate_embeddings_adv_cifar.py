@@ -54,7 +54,7 @@ if __name__ == "__main__":
     train, test = load_cifar10_dataset('../')
 
     for OPTIM in ['sgd', 'adam']:
-        for EMBEDDING_DIM in [128]:
+        for EMBEDDING_DIM in [16,32,64,128,256,512]:
             encoder = CifarResNet18(
                     embedding_dim=EMBEDDING_DIM, 
                     hidden_dim=1024,
