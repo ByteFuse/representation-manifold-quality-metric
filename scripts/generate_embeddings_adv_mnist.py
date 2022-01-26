@@ -212,7 +212,7 @@ if __name__ == "__main__":
                 df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
                 df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
 
-                save_loc = f'F://results/data=mnist/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
+                save_loc = f'../results/data=mnist/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
                 if not os.path.exists(save_loc):
                     os.makedirs(save_loc)
                 df.to_pickle(f'{save_loc}/{name}_adverserial.pickle')
