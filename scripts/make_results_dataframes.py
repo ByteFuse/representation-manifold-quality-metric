@@ -82,8 +82,8 @@ plot = pd.DataFrame()
 high_level_label = pd.DataFrame()
 plot_label = pd.DataFrame()
 
-for OPTIM in tqdm(['adam', 'sgd'], desc='OPTIM'):
-    for embedding_dim in tqdm([128], desc='embedding'):
+for OPTIM in tqdm(['adam','sgd'], desc='OPTIM'):
+    for embedding_dim in tqdm([16,32,64,128,256,512], desc='embedding'):
 
         if ADVERSERIAL:
             path = f'F://results/data={DATASET}/{OPTIM}/ADVERSERIAL_attacks/embedding_dim={embedding_dim}/'

@@ -374,7 +374,7 @@ def main(cfg: DictConfig):
     checkpoint_callback = ModelCheckpoint(
         dirpath='checkpoints', 
         filename='{epoch}-{valid_loss:.2f}', 
-        save_top_k=5, 
+        save_top_k=1, 
         monitor='valid_loss',
         save_weights_only=False,
         save_last=True

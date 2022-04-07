@@ -21,7 +21,8 @@ from src.data.utils import (
     load_caltect_dataset,
     load_fashion_dataset,
     load_mnist_dataset,
-    load_omniglot_dataset
+    load_omniglot_dataset,
+    load_kmnist_dataset
 )
 from src.models import CifarResNet18, LeNet
 
@@ -59,7 +60,7 @@ def quick_fine_tune(encoder, embedding_dim, dataloader, transform, n_classes=100
     model.cuda()
     model.train()
 
-    for epoch in range(25):
+    for epoch in range(5):
         running_loss = 0.0
         for batch in dataloader:
             images, labels = batch
@@ -80,10 +81,10 @@ def quick_fine_tune(encoder, embedding_dim, dataloader, transform, n_classes=100
 
 def main():
 
-    DATASET = 'mnist'
-    NEW_DATASET = 'fashion'
+    DATASET = 'cifar10'
+    NEW_DATASET = 'cifar100'
     FINE_TUNE = True
-    N_CLASSES = 10
+    N_CLASSES = 100
 
     loaders = {
         'cifar10': load_cifar10_dataset,
@@ -94,6 +95,7 @@ def main():
         'fashion': load_fashion_dataset,
         'mnist': load_mnist_dataset,
         'omniglot': load_omniglot_dataset,
+        'kmnist': load_kmnist_dataset
     }
 
     train, test = loaders[NEW_DATASET]('./')
@@ -125,15 +127,14 @@ def main():
        transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
 
 
-    embedding_dims = [3,16,32,64,128,256,512]
+    embedding_dims = [16,32,64,128,256,512]
 
     results = pd.DataFrame()
     
-    for optim in ['adam','sgd']:
+    for optim in ['adam', 'sgd']:
         for method in ['cross-entropy', 'triplet-supervised', 'triplet', 'triplet-entropy', 'random', 'nt-xent']:
             for embedding_dim in embedding_dims:
-                
-                
+                                
                 print(f'Starting calculation for method: {method} and embedding dim: {embedding_dim}')
 
                 if DATASET=='cifar10':
@@ -175,6 +176,7 @@ def main():
 
                     with torch.no_grad():
                         reps = encoder(images.cuda()).cpu().numpy()
+                        # reps = encoder(images).cpu().numpy()
                     train_embeddings = np.concatenate((train_embeddings, reps))
                 train_embeddings = train_embeddings[1:]
 
@@ -187,6 +189,7 @@ def main():
 
                     with torch.no_grad():
                         reps = encoder(images.cuda()).cpu().numpy()
+                        # reps = encoder(images).cpu().numpy()
                     test_embeddings = np.concatenate((test_embeddings, reps))
                 test_embeddings = test_embeddings[1:]
 

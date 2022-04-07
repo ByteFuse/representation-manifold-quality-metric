@@ -54,7 +54,7 @@ if __name__ == "__main__":
     train, test = load_mnist_dataset('../')
 
     for OPTIM in ['adam']:
-        for EMBEDDING_DIM in [128,256,512]:
+        for EMBEDDING_DIM in [64]:
             encoder = LeNet(
                     embedding_dim=EMBEDDING_DIM, 
                     dropout=0,
@@ -66,7 +66,7 @@ if __name__ == "__main__":
             model.eval()
             encoder_tripent = model.encoder
             encoder_tripent.eval()
-            encoder_tripent.cuda()
+            encoder_tripent.cpu()
             encoder_tripent.logits=True
 
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
             model.eval()
             encoder_xent = model.encoder
             encoder_xent.eval()
-            encoder_xent.cuda()
+            encoder_xent.cpu()
             encoder_xent.logits=True
 
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
             model.eval()
             encoder_ntxent = model.encoder
             encoder_ntxent.eval()
-            encoder_ntxent.cuda()
+            encoder_ntxent.cpu()
             encoder_ntxent.logits=False
 
             model = QueryRefrenceImageEncoder(encoder=encoder,loss_fn=None,optim_cfg=None,)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
             model.eval()
             encoder_trip_sup = model.encoder
             encoder_trip_sup.eval()
-            encoder_trip_sup.cuda()
+            encoder_trip_sup.cpu()
             encoder_trip_sup.logits=False
 
             model = QueryRefrenceImageEncoder(encoder=encoder,loss_fn=None,optim_cfg=None,)
@@ -115,7 +115,7 @@ if __name__ == "__main__":
             model.eval()
             encoder_trip = model.encoder
             encoder_trip.eval()
-            encoder_trip.cuda()
+            encoder_trip.cpu()
             encoder_trip.logits=False
 
             epsilons_dist = np.linspace(start=0, stop=0.2, num=100)
@@ -128,10 +128,24 @@ if __name__ == "__main__":
                 )
             # encoder_random.load_state_dict(torch.load(f'../multirun/mnist_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
             encoder_random.eval()
-            encoder_random.cuda()
+            encoder_random
 
-            models = [encoder_random, encoder_tripent, encoder_xent, encoder_ntxent, encoder_trip_sup, encoder_trip]
-            model_names = ['random_init', 'tripent_mnist', 'xent_mnist','ntxent_mnist', 'trip_sup_mnist', 'trip_mnist']
+            models = [
+                encoder_random,
+                encoder_tripent,
+                encoder_xent,
+                encoder_ntxent,
+                encoder_trip_sup,
+                encoder_trip
+            ]
+            model_names = [
+                'random_init', 
+                'tripent_mnist', 
+                'xent_mnist',
+                'ntxent_mnist', 
+                'trip_sup_mnist', 
+                'trip_mnist'
+                ]
             losses = {
                 'random_init': NtXentLoss(),
                 'tripent_mnist': TripletEntropyLoss(),
@@ -167,6 +181,7 @@ if __name__ == "__main__":
                                 loss_fn=losses[name],
                                 val_transform=transform,
                                 transform=aug_transform,
+                                device='cpu',
                                 iterations=iteration,
                                 epsilon=2/255 
                             )
@@ -179,6 +194,7 @@ if __name__ == "__main__":
                                 loss_fn=losses[name],
                                 final_transform=aug_transform,
                                 require_logits=True,
+                                device='cpu',
                                 iterations=iteration,
                                 epsilon=2/255 
                             )
@@ -191,6 +207,7 @@ if __name__ == "__main__":
                                 loss_fn=losses[name],
                                 final_transform=aug_transform,
                                 require_logits=False,
+                                device='cpu',
                                 iterations=iteration,
                                 epsilon=2/255 
                             )
@@ -198,7 +215,7 @@ if __name__ == "__main__":
 
                         with torch.no_grad():
                             
-                            reps = model(images.cuda()).cpu().numpy()
+                            reps = model(images).cpu().numpy()
                         projected_points = np.concatenate((projected_points, reps))
 
                     projected_points = projected_points[1:]

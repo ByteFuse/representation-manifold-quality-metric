@@ -13,11 +13,6 @@ from src.models import CifarResNet18
 
 from src.data.utils import load_cifar10_dataset
 
-
-EMBEDDING_DIM=128
-OPTIM='adam'
-
-
 class QueryRefrenceImageEncoder(pl.LightningModule):
     def __init__(self, 
                  encoder,
@@ -51,8 +46,8 @@ if __name__ == "__main__":
 
     train, test = load_cifar10_dataset('../')
 
-    for OPTIM in ['sgd', 'adam']:
-        for EMBEDDING_DIM in [128]:
+    for OPTIM in ['sgd']:
+        for EMBEDDING_DIM in [256,512]:
 
             encoder = CifarResNet18(
                     embedding_dim=EMBEDDING_DIM, 
@@ -126,13 +121,26 @@ if __name__ == "__main__":
                     logits=False,
                     number_classes=None
                 )
-            encoder_random.load_state_dict(torch.load(f'../multirun/cifar_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
+            # encoder_random.load_state_dict(torch.load(f'../multirun/cifar_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
             encoder_random.eval()
             encoder_random.cuda()
 
-            models = [encoder_random, encoder_tripent, encoder_xent,
-                    encoder_ntxent, encoder_trip_sup, encoder_trip]
-            model_names = ['random_init', 'tripent_cifar10', 'xent_cifar10','ntxent_cifar10', 'trip_sup_cifar10', 'trip_cifar10']
+            models = [
+                encoder_random,
+                 encoder_tripent,
+                  encoder_xent,
+                  encoder_ntxent, 
+                  encoder_trip_sup, 
+                  encoder_trip
+            ]
+            model_names = [
+                'random_init', 
+                'tripent_cifar10',
+                 'xent_cifar10',
+                 'ntxent_cifar10', 
+                 'trip_sup_cifar10', 
+                 'trip_cifar10'
+            ]
 
 
 

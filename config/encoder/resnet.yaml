@@ -1,4 +1,4 @@
-embedding_dim: 1024
+embedding_dim: 16
 hidden_dim: 1024
 logits: False
 number_classes: None

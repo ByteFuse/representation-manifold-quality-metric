@@ -10,7 +10,7 @@ import torchmetrics
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.callbacks import RichModelSummary
 
 import yaml
@@ -27,9 +27,17 @@ from src.data.utils import (
 from src.models import CifarResNet18, LeNet
 from src.utils import flatten_dict
 
+def ignore_none_collate_fn(batch):
+    '''
+    Collate function to be used with torch.Dataloader if 
+    you wish for the dataloader to ignore None that is returned 
+    from dataset itarator and collect a new sample.
+    '''
+    batch = list(filter(lambda x : x is not None, batch))
+    return torch.utils.data.dataloader.default_collate(batch)
+
 class GenericPlaceHolder(pl.LightningModule):
-    def __init__(self, 
-                 encoder):
+    def __init__(self, encoder):
         super().__init__()
         self.encoder = encoder
 
@@ -66,10 +74,8 @@ class LinearImageClassifier(pl.LightningModule):
 
         if original_data=='cifar10':
             self.train_transform = torchvision.transforms.Compose([
-                torchvision.transforms.RandomResizedCrop(size=(32,32)),
-                torchvision.transforms.RandomHorizontalFlip(p=0.3),
-                torchvision.transforms.RandomVerticalFlip(p=0.3),
-                torchvision.transforms.RandomPerspective(distortion_scale=0.2),
+                # torchvision.transforms.RandomHorizontalFlip(),
+                # torchvision.transforms.RandomVerticalFlip(),
                 torchvision.transforms.Normalize([0.49139968, 0.48215827 ,0.44653124], [0.24703233, 0.24348505, 0.26158768]),
             ])
 
@@ -88,13 +94,14 @@ class LinearImageClassifier(pl.LightningModule):
         self.train_accuracy = torchmetrics.Accuracy()
         self.val_accuracy = torchmetrics.Accuracy()
         
-        self.linear_head =nn.Sequential(
-          nn.Linear(embedding_size,n_classes)
+        self.head =nn.Sequential(
+          nn.ReLU(),
+          nn.Linear(embedding_size,n_classes),
         )
 
 
     def configure_optimizers(self):        
-        params = list(self.linear_head.parameters())
+        params = list(self.head.parameters())
         if self.optim=='adam':
             optimizer = torch.optim.Adam(params)     
         else:
@@ -106,7 +113,7 @@ class LinearImageClassifier(pl.LightningModule):
             self.encoder.eval()
             reps = self.encoder(image)
         
-        logits = self.linear_head(reps)
+        logits = self.head(reps)
         return logits
 
     def training_step(self, train_batch, _):
@@ -115,6 +122,7 @@ class LinearImageClassifier(pl.LightningModule):
             images = self.train_transform(images)
         else:
             images = self.transform(images)
+        labels=labels.to(torch.int64)    
         logits = self(images)
         loss = self.loss_func(logits, labels)
         self.train_accuracy(logits.softmax(dim=-1), labels)
@@ -126,6 +134,7 @@ class LinearImageClassifier(pl.LightningModule):
     def validation_step(self, val_batch, _):
         images, labels = val_batch
         images = self.transform(images)
+        labels=labels.to(torch.int64)
         logits = self(images)
         loss = self.loss_func(logits, labels)
         self.val_accuracy(logits.softmax(dim=-1), labels)
@@ -152,13 +161,19 @@ class FineTuneModels(LinearImageClassifier):
           nn.ReLU(),
           nn.Linear(embedding_size,n_classes)
         )
+        
+        # only fine tune last few layers
+        for i, params in enumerate(self.model.parameters()):
+            if i<50:
+                params.requires_grad = False
 
     def configure_optimizers(self):        
         params = list(self.parameters())
+        
         if self.optim=='adam':
-            optimizer = torch.optim.Adam(params)     
+            optimizer = torch.optim.Adam(params, lr=1e-4)     
         else:
-            optimizer = torch.optim.SGD(params, lr=0.001, momentum=0.9)
+            optimizer = torch.optim.SGD(params, lr=1e-4, momentum=0.9)
         return optimizer
 
     def forward(self, image):
@@ -186,27 +201,29 @@ def main():
         train,
         batch_size=cfg['batch_size'],
         shuffle=True,
-        num_workers=5,
+        num_workers=6,
         persistent_workers=True,
         pin_memory=True,
-        drop_last=False
+        drop_last=False,
+        collate_fn=ignore_none_collate_fn
+
     )
 
     test_dataloader = torch.utils.data.DataLoader(
         test,
         batch_size=cfg['batch_size'],
         shuffle=False,
-        num_workers=5,
+        num_workers=6,
         persistent_workers=True,
         pin_memory=True,
-        drop_last=False
+        drop_last=False,
+        collate_fn=ignore_none_collate_fn
     )
 
 
     embedding_dims = cfg['embedding_dim']
-    # for method in ['cross-entropy', 'triplet-supervised', 'triplet', 'triplet-entropy', 'random', 'nt-xent']:
-    for method in ['triplet']:
-        for embedding_dim in embedding_dims:
+    for embedding_dim in embedding_dims:
+        for method in ['triplet-supervised', 'triplet', 'triplet-entropy', 'random','nt-xent','cross-entropy', ]:
             cfg['embedding_dim'] = embedding_dim #reassign here for logging purposes
             cfg['original_method'] = method
 
@@ -214,14 +231,14 @@ def main():
                 cnn_encoder = CifarResNet18(
                     embedding_dim=cfg['embedding_dim'], 
                     hidden_dim=1024,
-                    logits=True if cfg['need_logits'] else False,
-                    number_classes=10 if cfg['need_logits'] else None,
+                    logits=True if method in ['cross-entropy','triplet-entropy'] else False,
+                    number_classes=10 if method in ['cross-entropy','triplet-entropy'] else None,
                 )
             else:
                 cnn_encoder = LeNet(
                     embedding_dim=cfg['embedding_dim'], 
-                    logits=True if cfg['need_logits'] else False,
-                    number_classes=10 if cfg['need_logits'] else None,
+                    logits=True if method in ['cross-entropy','triplet-entropy'] else False,
+                    number_classes=10 if method in ['cross-entropy','triplet-entropy'] else None,
                 )
 
             model = GenericPlaceHolder(encoder=cnn_encoder)
@@ -270,10 +287,16 @@ def main():
             checkpoint_callback = ModelCheckpoint(
                 dirpath=checkpoint_dir, 
                 filename='{epoch}-{val_acc:.2f}', 
-                save_top_k=2, 
+                save_top_k=1, 
                 monitor='val_acc',
                 save_weights_only=False,
                 save_last=True
+            )
+
+            early_stop = EarlyStopping(
+                monitor='val_acc',
+                patience=2,
+                mode='max',
             )
 
             trainer = pl.Trainer( 
@@ -283,7 +306,7 @@ def main():
                 deterministic=True, 
                 # precision=32 if not torch.cuda.is_available() else 16,   
                 profiler="simple",
-                callbacks=[checkpoint_callback, RichModelSummary()],
+                callbacks=[checkpoint_callback, RichModelSummary(), early_stop],
             )
 
             trainer.fit(
@@ -294,4 +317,5 @@ def main():
             wandb.finish()
 
 if __name__ == "__main__":
+    pl.utilities.seed.seed_everything(42)
     main()

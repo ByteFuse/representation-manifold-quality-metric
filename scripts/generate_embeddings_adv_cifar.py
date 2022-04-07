@@ -53,8 +53,8 @@ if __name__ == "__main__":
 
     train, test = load_cifar10_dataset('../')
 
-    for OPTIM in ['sgd', 'adam']:
-        for EMBEDDING_DIM in [128]:
+    for OPTIM in ['sgd']:
+        for EMBEDDING_DIM in [64,256,512]:
             encoder = CifarResNet18(
                     embedding_dim=EMBEDDING_DIM, 
                     hidden_dim=1024,
@@ -127,13 +127,27 @@ if __name__ == "__main__":
                     logits=False,
                     number_classes=None
                 )
-            encoder_random.load_state_dict(torch.load(f'../multirun/cifar_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
+            # encoder_random.load_state_dict(torch.load(f'../multirun/cifar_encoder_random_dim{EMBEDDING_DIM}.pt')) #ensure random always the same
             encoder_random.eval()
             encoder_random.cuda()
 
-            models = [encoder_random, encoder_tripent, encoder_xent,
-                    encoder_ntxent, encoder_trip_sup, encoder_trip]
-            model_names = ['random_init', 'tripent_cifar10', 'xent_cifar10','ntxent_cifar10', 'trip_sup_cifar10', 'trip_cifar10']
+            models = [
+                encoder_random,
+                encoder_tripent,
+                encoder_xent,
+                encoder_ntxent,
+                encoder_trip_sup, 
+                encoder_trip
+            ]
+
+            model_names = [
+                'random_init',
+                'tripent_cifar10',
+                'xent_cifar10',
+                'ntxent_cifar10',
+                'trip_sup_cifar10',
+                'trip_cifar10'
+            ]
             losses = {
                 'random_init': NtXentLoss(),
                 'tripent_cifar10': TripletEntropyLoss(),
@@ -204,7 +218,6 @@ if __name__ == "__main__":
                             model.logits = False
 
                         with torch.no_grad():
-                            
                             reps = model(images.cuda()).cpu().numpy()
                         projected_points = np.concatenate((projected_points, reps))
 
@@ -222,7 +235,7 @@ if __name__ == "__main__":
                 df[fcols] = df[fcols].apply(pd.to_numeric, downcast='float')
                 df[icols] = df[icols].apply(pd.to_numeric, downcast='integer')
 
-                save_loc = f'../results/data=cifar10/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
+                save_loc = f'F://results/data=cifar10/{OPTIM}/adverserial_attacks/embedding_dim={EMBEDDING_DIM}/'
                 if not os.path.exists(save_loc):
                     os.makedirs(save_loc)
                 df.to_pickle(f'{save_loc}/{name}_adverserial.pickle')
