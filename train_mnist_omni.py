@@ -28,6 +28,7 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
             transform2,
             batch_size=64,
             num_workers=0,
+            sample_size = 500,
             data='mnist'):
         super().__init__()
         self.transform1 = transform1
@@ -40,7 +41,7 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
             self.val_transform = torchvision.transforms.Normalize((0.1307,), (0.3081,))
         else:
             self.val_transform = torchvision.transforms.Normalize((0.9220,), (0.2516,))
-
+        self.sample_size = sample_size
 
     def setup(self, stage=None):
 
@@ -55,6 +56,11 @@ class TrainerQueryRefrenceSet(pl.LightningDataModule):
             self.transform2,
             labels=True
         )
+
+        
+        #make smaller for neurips rebutal
+        self.train_data = torch.utils.data.Subset(self.train_data, torch.randperm(len(self.train_data))[:self.sample_size])
+
         self.val_data = QueryReferenceImageSet(
             test,
             self.val_transform,
@@ -92,13 +98,14 @@ class TrainerSingleImageSet(pl.LightningDataModule):
             transform,
             batch_size=64,
             num_workers=0,
+            sample_size=5000,
             data='mnist'):
 
         super().__init__()
         self.transform = transform
         self.batch_size = batch_size
         self.num_workers = num_workers
-
+        self.sample_size = sample_size
         self.data = data
 
         if data == 'mnist':
@@ -118,6 +125,9 @@ class TrainerSingleImageSet(pl.LightningDataModule):
             self.transform,
             labels=True
         )
+                
+        #make smaller for neurips rebutal
+        self.train_data = torch.utils.data.Subset(self.train_data, torch.randperm(len(self.train_data))[:self.sample_size])
         self.val_data = ImageSet(
             test, 
             self.val_transform,
@@ -328,7 +338,8 @@ def main(cfg: DictConfig):
             transform1=transform1,
             transform2=transform2,
             batch_size=cfg.data.batch_size,
-            num_workers=cfg.data.num_workers
+            num_workers=cfg.data.num_workers,
+            sample_size=cfg.data.sample_size
         )
         model = QueryRefrenceImageEncoder(
             encoder=encoder,
@@ -339,7 +350,8 @@ def main(cfg: DictConfig):
         data = TrainerSingleImageSet(
             transform=transform,
             batch_size=cfg.data.batch_size,
-            num_workers=cfg.data.num_workers
+            num_workers=cfg.data.num_workers,
+            sample_size=cfg.data.sample_size
         )
         model = ImageEncoder(
             encoder=encoder,

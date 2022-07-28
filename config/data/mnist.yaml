@@ -2,4 +2,5 @@ name: 'mnist'
 resize: 32
 batch_size: 64
 num_workers: 8
+sample_size: 500
 n_batches_accumalation: 8
